@@ -1,0 +1,3 @@
+C:/YOLO-android/ncnn/ncnn-android-yolo11/app/.cxx/RelWithDebInfo/4m2d3ii5/x86/CMakeFiles/yolo11ncnn.dir
+C:/YOLO-android/ncnn/ncnn-android-yolo11/app/.cxx/RelWithDebInfo/4m2d3ii5/x86/CMakeFiles/edit_cache.dir
+C:/YOLO-android/ncnn/ncnn-android-yolo11/app/.cxx/RelWithDebInfo/4m2d3ii5/x86/CMakeFiles/rebuild_cache.dir

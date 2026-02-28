@@ -1,0 +1,59 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.tencent.yolo11ncnn'
+    compileSdk 33
+    ndkVersion "29.0.14206865"
+
+    defaultConfig {
+        applicationId "com.tencent.yolo11ncnn"
+        archivesBaseName = "$applicationId"
+
+        minSdkVersion 24
+        targetSdkVersion 35
+
+        externalNativeBuild {
+            cmake {
+                arguments "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON"
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            version "3.31.5"
+            path file('src/main/jni/CMakeLists.txt')
+        }
+    }
+
+    dependencies {
+        // AndroidX (replaces old android.support.v4)
+        implementation 'androidx.core:core:1.9.0'
+        implementation 'androidx.appcompat:appcompat:1.6.1'
+        
+        // NanoHTTPD for HTTP server only (WebSocket has known issues)
+        implementation('org.nanohttpd:nanohttpd:2.3.1') {
+            exclude group: 'com.android.support'
+        }
+        implementation('org.nanohttpd:nanohttpd-websocket:2.3.1') {
+            exclude group: 'com.android.support'
+        }
+        
+        // Use Java-WebSocket for reliable WebSocket support
+        implementation 'org.java-websocket:Java-WebSocket:1.5.3'
+        
+        // Mozilla Rhino for JavaScript execution (Android-compatible fork)
+        implementation 'io.apisense:rhino-android:1.1.1'
+        
+        // JSON parsing
+        implementation 'com.google.code.gson:gson:2.10.1'
+    }
+
+    packaging {
+        jniLibs {
+            useLegacyPackaging true
+        }
+    }
+}

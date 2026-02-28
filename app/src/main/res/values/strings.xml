@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">yolo11ncnn</string>
+    <string-array name="task_array">
+        <item>coco</item>
+        <item>seg</item>
+        <item>pose</item>
+        <item>cls</item>
+        <item>obb</item>
+    </string-array>
+    <string-array name="model_array">
+        <item>n-320</item>
+        <item>s-320</item>
+        <item>m-320</item>
+        <item>n-480</item>
+        <item>s-480</item>
+        <item>m-480</item>
+        <item>n-640</item>
+        <item>s-640</item>
+        <item>m-640</item>
+    </string-array>
+    <string-array name="cpugpu_array">
+        <item>CPU</item>
+        <item>GPU</item>
+        <item>turnip</item>
+    </string-array>
+</resources>

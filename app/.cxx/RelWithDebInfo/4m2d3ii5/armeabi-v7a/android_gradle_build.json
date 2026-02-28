@@ -1,0 +1,50 @@
+{
+  "buildFiles": [
+    "C:\\YOLO-android\\ncnn\\ncnn-android-yolo11\\app\\src\\main\\jni\\CMakeLists.txt",
+    "C:\\YOLO-android\\ncnn\\ncnn-android-yolo11\\app\\src\\main\\jni\\ncnn-20260113-android-vulkan\\armeabi-v7a\\lib\\cmake\\glslang\\glslang-config-version.cmake",
+    "C:\\YOLO-android\\ncnn\\ncnn-android-yolo11\\app\\src\\main\\jni\\ncnn-20260113-android-vulkan\\armeabi-v7a\\lib\\cmake\\glslang\\glslang-config.cmake",
+    "C:\\YOLO-android\\ncnn\\ncnn-android-yolo11\\app\\src\\main\\jni\\ncnn-20260113-android-vulkan\\armeabi-v7a\\lib\\cmake\\glslang\\glslang-targets-release.cmake",
+    "C:\\YOLO-android\\ncnn\\ncnn-android-yolo11\\app\\src\\main\\jni\\ncnn-20260113-android-vulkan\\armeabi-v7a\\lib\\cmake\\glslang\\glslang-targets.cmake",
+    "C:\\YOLO-android\\ncnn\\ncnn-android-yolo11\\app\\src\\main\\jni\\ncnn-20260113-android-vulkan\\armeabi-v7a\\lib\\cmake\\ncnn\\ncnn-release.cmake",
+    "C:\\YOLO-android\\ncnn\\ncnn-android-yolo11\\app\\src\\main\\jni\\ncnn-20260113-android-vulkan\\armeabi-v7a\\lib\\cmake\\ncnn\\ncnn.cmake",
+    "C:\\YOLO-android\\ncnn\\ncnn-android-yolo11\\app\\src\\main\\jni\\ncnn-20260113-android-vulkan\\armeabi-v7a\\lib\\cmake\\ncnn\\ncnnConfig.cmake",
+    "C:\\YOLO-android\\ncnn\\ncnn-android-yolo11\\app\\src\\main\\jni\\ncnn-20260113-android-vulkan\\armeabi-v7a\\lib\\cmake\\ncnn\\ncnnConfigVersion.cmake",
+    "C:\\YOLO-android\\ncnn\\ncnn-android-yolo11\\app\\src\\main\\jni\\opencv-mobile-2.4.13.7-android\\sdk\\native\\jni\\OpenCVConfig-version.cmake",
+    "C:\\YOLO-android\\ncnn\\ncnn-android-yolo11\\app\\src\\main\\jni\\opencv-mobile-2.4.13.7-android\\sdk\\native\\jni\\OpenCVConfig.cmake",
+    "C:\\YOLO-android\\ncnn\\ncnn-android-yolo11\\app\\src\\main\\jni\\opencv-mobile-2.4.13.7-android\\sdk\\native\\jni\\OpenCVModules_armeabi_v7a-release.cmake",
+    "C:\\YOLO-android\\ncnn\\ncnn-android-yolo11\\app\\src\\main\\jni\\opencv-mobile-2.4.13.7-android\\sdk\\native\\jni\\OpenCVModules_armeabi_v7a.cmake"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "C:\\Users\\dylan\\AppData\\Local\\Android\\Sdk\\cmake\\3.31.5\\bin\\ninja.exe",
+      "-C",
+      "C:\\YOLO-android\\ncnn\\ncnn-android-yolo11\\app\\.cxx\\RelWithDebInfo\\4m2d3ii5\\armeabi-v7a",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "C:\\Users\\dylan\\AppData\\Local\\Android\\Sdk\\cmake\\3.31.5\\bin\\ninja.exe",
+    "-C",
+    "C:\\YOLO-android\\ncnn\\ncnn-android-yolo11\\app\\.cxx\\RelWithDebInfo\\4m2d3ii5\\armeabi-v7a",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "yolo11ncnn::@6890427a1f51a3e7e1df": {
+      "toolchain": "toolchain",
+      "abi": "armeabi-v7a",
+      "artifactName": "yolo11ncnn",
+      "output": "C:\\YOLO-android\\ncnn\\ncnn-android-yolo11\\app\\build\\intermediates\\cxx\\RelWithDebInfo\\4m2d3ii5\\obj\\armeabi-v7a\\libyolo11ncnn.so",
+      "runtimeFiles": []
+    }
+  },
+  "toolchains": {
+    "toolchain": {
+      "cCompilerExecutable": "C:\\Users\\dylan\\AppData\\Local\\Android\\Sdk\\ndk\\29.0.14206865\\toolchains\\llvm\\prebuilt\\windows-x86_64\\bin\\clang.exe",
+      "cppCompilerExecutable": "C:\\Users\\dylan\\AppData\\Local\\Android\\Sdk\\ndk\\29.0.14206865\\toolchains\\llvm\\prebuilt\\windows-x86_64\\bin\\clang++.exe"
+    }
+  },
+  "cFileExtensions": [],
+  "cppFileExtensions": [
+    "cpp"
+  ]
+}

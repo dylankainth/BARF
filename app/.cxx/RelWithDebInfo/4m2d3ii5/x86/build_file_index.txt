@@ -1,0 +1,13 @@
+C:\YOLO-android\ncnn\ncnn-android-yolo11\app\src\main\jni\CMakeLists.txt
+C:\YOLO-android\ncnn\ncnn-android-yolo11\app\src\main\jni\ncnn-20260113-android-vulkan\x86\lib\cmake\glslang\glslang-config-version.cmake
+C:\YOLO-android\ncnn\ncnn-android-yolo11\app\src\main\jni\ncnn-20260113-android-vulkan\x86\lib\cmake\glslang\glslang-config.cmake
+C:\YOLO-android\ncnn\ncnn-android-yolo11\app\src\main\jni\ncnn-20260113-android-vulkan\x86\lib\cmake\glslang\glslang-targets-release.cmake
+C:\YOLO-android\ncnn\ncnn-android-yolo11\app\src\main\jni\ncnn-20260113-android-vulkan\x86\lib\cmake\glslang\glslang-targets.cmake
+C:\YOLO-android\ncnn\ncnn-android-yolo11\app\src\main\jni\ncnn-20260113-android-vulkan\x86\lib\cmake\ncnn\ncnn-release.cmake
+C:\YOLO-android\ncnn\ncnn-android-yolo11\app\src\main\jni\ncnn-20260113-android-vulkan\x86\lib\cmake\ncnn\ncnn.cmake
+C:\YOLO-android\ncnn\ncnn-android-yolo11\app\src\main\jni\ncnn-20260113-android-vulkan\x86\lib\cmake\ncnn\ncnnConfig.cmake
+C:\YOLO-android\ncnn\ncnn-android-yolo11\app\src\main\jni\ncnn-20260113-android-vulkan\x86\lib\cmake\ncnn\ncnnConfigVersion.cmake
+C:\YOLO-android\ncnn\ncnn-android-yolo11\app\src\main\jni\opencv-mobile-2.4.13.7-android\sdk\native\jni\OpenCVConfig-version.cmake
+C:\YOLO-android\ncnn\ncnn-android-yolo11\app\src\main\jni\opencv-mobile-2.4.13.7-android\sdk\native\jni\OpenCVConfig.cmake
+C:\YOLO-android\ncnn\ncnn-android-yolo11\app\src\main\jni\opencv-mobile-2.4.13.7-android\sdk\native\jni\OpenCVModules_x86-release.cmake
+C:\YOLO-android\ncnn\ncnn-android-yolo11\app\src\main\jni\opencv-mobile-2.4.13.7-android\sdk\native\jni\OpenCVModules_x86.cmake
