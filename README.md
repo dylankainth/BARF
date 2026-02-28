@@ -16,6 +16,9 @@ You can configure external connections on the settings page:
 
 We built this for Unibots 2026. You can find our reciever source code for ESP32 Hardware [here](https://github.com/KCL-Electronics/Unibots2026/blob/main/Team8/usingUDP)
 
+Phone display:
+![Yolo Demo](https://i.ibb.co/TB10DTb3/Screenshot-20260228-221506-yolo11ncnn.jpg)
+
 ## Try it out!
 
 Download the APK from GoFile [here](https://gofile.io/d/tNGSdD)
