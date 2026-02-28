@@ -1,4 +1,4 @@
-# Boring Android Robotics Framework.
+# Boring Android-based Robotics Framework.
 A lightweight robotics framework built on Tencent/ncnn, nihui/ncnn-android-yolo11.
 
 ![Yolo Demo](https://i.ibb.co/xSzBGpz8/Screenshot-2026-02-28-221533.png)
