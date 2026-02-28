@@ -1,19 +1,30 @@
-# ncnn-android-yolo11
+# Boring Android Robotics Framework.
+A lightweight robotics framework built on Tencent/ncnn, nihui/ncnn-android-yolo11.
 
-![download](https://img.shields.io/github/downloads/nihui/ncnn-android-yolo11/total.svg)
+![Yolo Demo](https://i.ibb.co/xSzBGpz8/Screenshot-2026-02-28-221533.png)
 
-The YOLO11 object detection
+This is a Android app that
+- Uses the phone camera with NCNN to process Yolo11 Frames
+- Hosts a web app, where various metrics are streamed to and from
+- Allows for scripting on the web app (in Javascript) to be run on the Android device (via Rhino)
+- Connects to an ESP32 and sends it UDP Control Packets for Robot Control
 
-This is a sample ncnn android project, it depends on ncnn library and opencv
+![Code Demo](https://i.ibb.co/rNbPxHf/Screenshot-2026-02-28-221541.png)
 
+You can configure external connections on the settings page:
+![Settings Page](https://i.ibb.co/wNGx5Zg3/Screenshot-2026-02-28-221547.png)
+
+We built this for Unibots 2026. You can find our reciever source code for ESP32 Hardware [here](https://github.com/KCL-Electronics/Unibots2026/blob/main/Team8/usingUDP)
+
+## Try it out!
+
+Download the APK from GoFile [here](https://gofile.io/d/tNGSdD)
+
+## YOLO features
+The YOLO11 object detection depends on ncnn library and opencv
 https://github.com/Tencent/ncnn
-
 https://github.com/nihui/opencv-mobile
-
 https://github.com/nihui/mesa-turnip-android-driver  (mesa turnip driver)
-
-## android apk file download
-https://github.com/nihui/ncnn-android-yolo11/releases/latest
 
 ## how to build and run
 ### step1
@@ -38,17 +49,12 @@ https://github.com/nihui/mesa-turnip-android-driver
 ### step4
 * Open this project with Android Studio, build it and enjoy!
 
-## some notes
+## some notes from tencent
 * Android ndk camera is used for best efficiency
 * Crash may happen on very old devices for lacking HAL3 camera interface
 * All models are manually modified to accept dynamic input shape
 * Most small models run slower on GPU than on CPU, this is common
 * FPS may be lower in dark environment because of longer camera exposure time
-
-## screenshot
-![](screenshot0.jpg)
-![](screenshot1.jpg)
-![](screenshot2.jpg)
 
 ## guidelines for converting YOLO11 models
 
