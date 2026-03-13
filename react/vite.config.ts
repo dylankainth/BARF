@@ -12,7 +12,7 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: path.resolve(__dirname, "../ncnn-android-yolo11/app/src/main/assets/web"),
+    outDir: path.resolve(__dirname, "../app/src/main/assets/web"),
     emptyOutDir: true
   }
 })

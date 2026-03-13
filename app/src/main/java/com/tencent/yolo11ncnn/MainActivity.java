@@ -435,6 +435,30 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Si
         // Send UDP command: X,Y,R,E (R=0 for movement, E=0 unused)
         sendUdpCommand(x, y, 0, 0);
     }
+
+    @Override
+    public void onLift(String direction, float speed) {
+        Log.i("MainActivity", "Robot lift: " + direction + " speed: " + speed);
+        lastCommand = "lift:" + direction + ":" + speed;
+        
+        // Convert speed (0.0-1.0) to motor value (-255 to 255)
+        int motorSpeed = (int) (speed * 255);
+        int e = 0;
+        
+        switch (direction.toLowerCase()) {
+            case "up":
+                Log.d("MainActivity", "Moving lift up at speed " + speed);
+                e = motorSpeed; // Positive Y for forward
+                break;
+            case "down":
+                Log.d("MainActivity", "Moving lift down at speed " + speed);
+                e = -motorSpeed; // Negative Y for backward
+                break;
+        }
+        
+        // Send UDP command: X,Y,R,E (R=0 for movement, E=0 unused)
+        sendUdpCommand(0, 0, 0, e);
+    }
     
     @Override
     public void onRotate(String direction, float speed) {

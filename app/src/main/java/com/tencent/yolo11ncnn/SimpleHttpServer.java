@@ -40,6 +40,7 @@ public class SimpleHttpServer extends NanoHTTPD {
      */
     public interface RobotControlCallback {
         void onMove(String direction, float speed);
+        void onLift(String direction, float speed);
         void onRotate(String direction, float speed);
         void onStop();
         void onCameraSwitch();
@@ -96,6 +97,12 @@ public class SimpleHttpServer extends NanoHTTPD {
             public void onMove(String direction, float speed) {
                 if (robotCallback != null) {
                     robotCallback.onMove(direction, speed);
+                }
+            }
+            @Override
+            public void onLift(String direction, float speed) {
+                if (robotCallback != null) {
+                    robotCallback.onLift(direction, speed);
                 }
             }
             
@@ -247,6 +254,12 @@ public class SimpleHttpServer extends NanoHTTPD {
             case "/api/robot/move":
                 if (method == Method.POST) {
                     return handleRobotMove(session);
+                }
+                break;
+    
+            case "/api/robot/lift":
+                if (method == Method.POST) {
+                    return handleRobotLift(session);
                 }
                 break;
                 
@@ -411,6 +424,36 @@ public class SimpleHttpServer extends NanoHTTPD {
         } catch (Exception e) {
             return createJsonResponse(Response.Status.BAD_REQUEST, 
                     createErrorJson("Failed to move: " + e.getMessage()));
+        }
+    }
+    /**
+     * Handle POST /api/robot/lift
+     * Body: { "direction": "up|down", "liftSpeed": 0.0-1.0 }
+     */
+    private Response handleRobotLift(IHTTPSession session) {
+        try {
+            String body = getRequestBody(session);
+            JsonObject json = com.google.gson.JsonParser.parseString(body).getAsJsonObject();
+            
+            String direction = json.get("direction").getAsString();
+            float liftSpeed = json.get("liftSpeed").getAsFloat();
+            if (robotCallback != null) {
+                robotCallback.onLift(direction, liftSpeed);
+                broadcastRobotCommand("lift", direction, liftSpeed);
+            }
+            
+            JsonObject response = new JsonObject();
+            response.addProperty("success", true);
+            response.addProperty("command", "lift");
+            response.addProperty("direction", direction);
+            response.addProperty("liftSpeed", liftSpeed);
+            
+            return createJsonResponse(Response.Status.OK, response.toString());
+            
+        } catch (Exception e) {
+            Log.d(TAG, "Failed to lift: " + e.getMessage());
+            return createJsonResponse(Response.Status.BAD_REQUEST, 
+                    createErrorJson("Failed to lift: " + e.getMessage()));
         }
     }
     

@@ -8,6 +8,7 @@ const getHttpBase = () => {
 export default function ControlPage() {
     const [status, setStatus] = useState<any>({ isMoving: false, lastCommand: "none", cameraFacing: 0 });
     const [speed, setSpeed] = useState(0.5);
+    const [liftSpeed, setliftSpeed] = useState(0.5);
     const base = getHttpBase();
 
     useEffect(() => {
@@ -35,6 +36,7 @@ export default function ControlPage() {
     }
 
     const move = (direction: string) => post("/api/robot/move", { direction, speed });
+    const lift = (direction: string) => post("/api/robot/lift", { direction, liftSpeed });
     const rotate = (direction: string) => post("/api/robot/rotate", { direction, speed });
     const stop = () => post("/api/robot/stop", {});
     const switchCamera = () => post("/api/robot/camera/switch", {});
@@ -80,10 +82,18 @@ export default function ControlPage() {
                         <button onClick={() => rotate("right")} className="flex-1 btn">Rotate Right</button>
                         <button onClick={() => rotate("left")} className="flex-1 btn">Rotate Left</button>
                     </div>
+                    <div className="flex gap-3 w-full py-4">
+                        <button onClick={() => lift("up")} className="flex-1 btn">Lift Up</button>
+                        <button onClick={() => lift("down")} className="flex-1 btn">Lift Down</button>
+                    </div>
 
                     <div className="flex gap-3 w-full py-4">
                         <label className="block text-sm mb-2">Speed: {Math.round(speed * 100)}%</label>
                         <input type="range" min={0} max={1} step={0.01} value={speed} onChange={(e) => setSpeed(Number(e.target.value))} className="w-full" />
+                    </div>
+                    <div className="flex gap-3 w-full py-4">
+                        <label className="block text-sm mb-2">Lift Speed: {Math.round(liftSpeed * 100)}%</label>
+                        <input type="range" min={0} max={1} step={0.01} value={liftSpeed} onChange={(e) => setliftSpeed(Number(e.target.value))} className="w-full" />
                     </div>
 
                     <div className="flex gap-3 w-full py-4">

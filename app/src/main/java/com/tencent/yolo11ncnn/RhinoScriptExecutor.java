@@ -38,6 +38,7 @@ public class RhinoScriptExecutor {
     public interface RobotCommandCallback {
         void onMove(String direction, float speed);
         void onRotate(String direction, float speed);
+        void onLift(String direction, float speed);
         void onStop();
     }
     
@@ -288,6 +289,19 @@ public class RhinoScriptExecutor {
             appendOutput("move('" + direction + "', " + s + ")");
             if (callback != null) {
                 callback.onMove(direction, s);
+            }
+        }
+        /**
+         * Move the lift on the robot in a direction.
+         * @param direction "up", "down"
+         * @param speed 0.0 to 1.0
+         */
+        public void lift(String direction, double speed) {
+            checkRunning();
+            float s = Math.max(0f, Math.min(1f, (float) speed));
+            appendOutput("lift('" + direction + "', " + s + ")");
+            if (callback != null) {
+                callback.onLift(direction, s);
             }
         }
         
