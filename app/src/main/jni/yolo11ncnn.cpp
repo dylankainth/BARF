@@ -330,8 +330,12 @@ JNIEXPORT jboolean JNICALL Java_com_tencent_yolo11ncnn_YOLO11Ncnn_loadModel(JNIE
         "m"
     };
 
-    std::string parampath = std::string("yolo11") + modeltypes[(int)modelid] + tasknames[(int)taskid] + ".ncnn.param";
-    std::string modelpath = std::string("yolo11") + modeltypes[(int)modelid] + tasknames[(int)taskid] + ".ncnn.bin";
+    std::string yoloname = "yolo11";
+    if (taskid==0){
+        yoloname = "yolo26";
+    }
+    std::string parampath = yoloname + modeltypes[(int)modelid] + tasknames[(int)taskid] + ".ncnn.param";
+    std::string modelpath = yoloname + modeltypes[(int)modelid] + tasknames[(int)taskid] + ".ncnn.bin";
     bool use_gpu = (int)cpugpu == 1;
     bool use_turnip = (int)cpugpu == 2;
 
