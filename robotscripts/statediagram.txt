@@ -1,0 +1,75 @@
+
+stateDiagram-v2
+    [*] --> SEARCH_BALL
+
+    state SEARCH_BALL {
+        [*] --> Rotating
+        Rotating: Rotate slowly scanning for ping pong balls
+        Rotating: Run camera ball detection
+    }
+
+    SEARCH_BALL --> TRACK_BALL: ball_detected
+    SEARCH_BALL --> SEARCH_APRILTAG: match_time > 150s
+
+    state TRACK_BALL {
+        [*] --> PIDTracking
+        PIDTracking: PID steering using ball_x
+        PIDTracking: error = center_x - ball_x
+        PIDTracking: rotate robot to center ball
+    }
+
+    TRACK_BALL --> APPROACH_BALL: ball_centered
+    TRACK_BALL --> SEARCH_BALL: ball_lost
+
+    state APPROACH_BALL {
+        [*] --> DrivingForward
+        DrivingForward: Drive forward
+        DrivingForward: Continue PID correction
+    }
+
+    APPROACH_BALL --> CAPTURE_DRIVE: ball disappears
+
+    state CAPTURE_DRIVE {
+        [*] --> CaptureForward
+        CaptureForward: Drive forward
+        CaptureForward: Start 2 second timer
+    }
+
+    CAPTURE_DRIVE --> SEARCH_BALL: timer_done
+
+    state SEARCH_APRILTAG {
+        [*] --> RotatingForTag
+        RotatingForTag: Rotate slowly
+        RotatingForTag: Run AprilTag detection
+    }
+
+    SEARCH_APRILTAG --> ALIGN_TO_TAG: tag_detected
+
+    state ALIGN_TO_TAG {
+        [*] --> Aligning
+        Aligning: PID align tag to center of camera
+        Aligning: error = tag_x - center_x
+    }
+
+    ALIGN_TO_TAG --> DRIVE_TO_BASE: tag_centered
+    ALIGN_TO_TAG --> SEARCH_APRILTAG: tag_lost
+
+    state DRIVE_TO_BASE {
+        [*] --> DrivingHome
+        DrivingHome: Drive toward base wall
+        DrivingHome: Prefer distance sensor or AprilTag pose
+        DrivingHome: Odometry fallback
+    }
+
+    DRIVE_TO_BASE --> DEPOSIT_BALLS: wall_detected
+
+    state DEPOSIT_BALLS {
+        [*] --> Depositing
+        Depositing: Stop robot
+        Depositing: Raise lift
+        Depositing: Wait 3 seconds
+        Depositing: Lower lift
+    }
+
+    DEPOSIT_BALLS --> [*]
+
