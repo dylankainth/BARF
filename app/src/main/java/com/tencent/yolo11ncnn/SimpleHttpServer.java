@@ -42,6 +42,7 @@ public class SimpleHttpServer extends NanoHTTPD {
         void onMove(String direction, float speed);
         void onLift(String direction, float speed);
         void onRotate(String direction, float speed);
+        void onDrive(float x, float y, float r);
         void onStop();
         void onCameraSwitch();
         RobotStatus getRobotStatus();
@@ -110,6 +111,13 @@ public class SimpleHttpServer extends NanoHTTPD {
             public void onRotate(String direction, float speed) {
                 if (robotCallback != null) {
                     robotCallback.onRotate(direction, speed);
+                }
+            }
+            
+            @Override
+            public void onDrive(float x, float y, float r) {
+                if (robotCallback != null) {
+                    robotCallback.onDrive(x, y, r);
                 }
             }
             
