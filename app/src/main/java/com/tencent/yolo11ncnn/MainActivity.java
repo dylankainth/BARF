@@ -448,11 +448,11 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Si
         switch (direction.toLowerCase()) {
             case "up":
                 Log.d("MainActivity", "Moving lift up at speed " + speed);
-                e = motorSpeed; // Positive Y for forward
+                e = -motorSpeed;
                 break;
             case "down":
                 Log.d("MainActivity", "Moving lift down at speed " + speed);
-                e = -motorSpeed; // Negative Y for backward
+                e = motorSpeed;
                 break;
         }
         
@@ -483,6 +483,21 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Si
         
         // Send UDP command: X,Y,R,E (X=0, Y=0 for pure rotation, E=0 unused)
         sendUdpCommand(0, 0, r, 0);
+    }
+    
+    @Override
+    public void onDrive(float x, float y, float r) {
+        Log.i("MainActivity", "Robot drive: x=" + x + " y=" + y + " r=" + r);
+        isMoving = true;
+        lastCommand = "drive:" + x + ":" + y + ":" + r;
+        
+        // Convert normalized speeds (-1.0 to 1.0) to motor values (-255 to 255)
+        int mx = (int) (x * 255);
+        int my = (int) (y * 255);
+        int mr = (int) (r * 255);
+        
+        // Send UDP command: X,Y,R,E (E=0 unused for base movement)
+        sendUdpCommand(mx, my, mr, 0);
     }
     
     @Override

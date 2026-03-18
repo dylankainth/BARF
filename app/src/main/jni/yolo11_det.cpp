@@ -87,8 +87,11 @@
 
 #include "yolo11.h"
 
+#include <algorithm>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <android/log.h>
+#include <chrono>
 
 static inline float intersection_area(const Object& a, const Object& b)
 {
@@ -191,24 +194,23 @@ static void generate_proposals(const ncnn::Mat& pred, int stride, const ncnn::Ma
     const int num_grid_x = w / stride;
     const int num_grid_y = h / stride;
 
-    const int reg_max_1 = 16;
-    const int num_class = pred.w - reg_max_1 * 4; // number of classes. 80 for COCO
+    // YOLO26 export head is [bbox(4), cls(80)] per location (no DFL bins).
+    const int num_class = pred.w - 4;
 
     for (int y = 0; y < num_grid_y; y++)
     {
         for (int x = 0; x < num_grid_x; x++)
         {
-            const ncnn::Mat pred_grid = pred.row_range(y * num_grid_x + x, 1);
+            const int row_index = y * num_grid_x + x;
+            const float* pred_grid = pred.row(row_index);
 
             // find label with max score
             int label = -1;
             float score = -FLT_MAX;
             {
-                const ncnn::Mat pred_score = pred_grid.range(reg_max_1 * 4, num_class);
-
                 for (int k = 0; k < num_class; k++)
                 {
-                    float s = pred_score[k];
+                    float s = pred_grid[4 + k];
                     if (s > score)
                     {
                         label = k;
@@ -216,46 +218,19 @@ static void generate_proposals(const ncnn::Mat& pred, int stride, const ncnn::Ma
                     }
                 }
 
-                score = sigmoid(score);
+                // Some exports emit logits while others emit probabilities.
+                if (score < 0.f || score > 1.f)
+                    score = sigmoid(score);
             }
 
             if (score >= prob_threshold)
             {
-                ncnn::Mat pred_bbox = pred_grid.range(0, reg_max_1 * 4).reshape(reg_max_1, 4);
-
-                {
-                    ncnn::Layer* softmax = ncnn::create_layer("Softmax");
-
-                    ncnn::ParamDict pd;
-                    pd.set(0, 1); // axis
-                    pd.set(1, 1);
-                    softmax->load_param(pd);
-
-                    ncnn::Option opt;
-                    opt.num_threads = 1;
-                    opt.use_packing_layout = false;
-
-                    softmax->create_pipeline(opt);
-
-                    softmax->forward_inplace(pred_bbox, opt);
-
-                    softmax->destroy_pipeline(opt);
-
-                    delete softmax;
-                }
-
+                // YOLO26 boxes are direct ltrb distances at each grid location.
                 float pred_ltrb[4];
-                for (int k = 0; k < 4; k++)
-                {
-                    float dis = 0.f;
-                    const float* dis_after_sm = pred_bbox.row(k);
-                    for (int l = 0; l < reg_max_1; l++)
-                    {
-                        dis += l * dis_after_sm[l];
-                    }
-
-                    pred_ltrb[k] = dis * stride;
-                }
+                pred_ltrb[0] = pred_grid[0] * stride;
+                pred_ltrb[1] = pred_grid[1] * stride;
+                pred_ltrb[2] = pred_grid[2] * stride;
+                pred_ltrb[3] = pred_grid[3] * stride;
 
                 float pb_cx = (x + 0.5f) * stride;
                 float pb_cy = (y + 0.5f) * stride;
@@ -284,6 +259,14 @@ static void generate_proposals(const ncnn::Mat& pred, const std::vector<int>& st
     const int w = in_pad.w;
     const int h = in_pad.h;
 
+    int total_grid = 0;
+    for (size_t i = 0; i < strides.size(); i++)
+    {
+        const int stride = strides[i];
+        total_grid += (w / stride) * (h / stride);
+    }
+    objects.reserve(objects.size() + total_grid);
+
     int pred_row_offset = 0;
     for (size_t i = 0; i < strides.size(); i++)
     {
@@ -301,8 +284,8 @@ static void generate_proposals(const ncnn::Mat& pred, const std::vector<int>& st
 int YOLO11_det::detect(const cv::Mat& rgb, std::vector<Object>& objects)
 {
     const int target_size = det_target_size;//640;
-    const float prob_threshold = 0.25f;
-    const float nms_threshold = 0.45f;
+    const float prob_threshold = 0.45f;
+    const int max_det = 20;
 
     int img_w = rgb.cols;
     int img_h = rgb.rows;
@@ -348,23 +331,25 @@ int YOLO11_det::detect(const cv::Mat& rgb, std::vector<Object>& objects)
 
     ncnn::Mat out;
     ex.extract("out0", out);
-
+    
     std::vector<Object> proposals;
     generate_proposals(out, strides, in_pad, prob_threshold, proposals);
 
-    // sort all proposals by score from highest to lowest
-    qsort_descent_inplace(proposals);
+    auto prob_greater = [](const Object& a, const Object& b) { return a.prob > b.prob; };
+    if ((int)proposals.size() > max_det)
+    {
+        std::nth_element(proposals.begin(), proposals.begin() + max_det, proposals.end(), prob_greater);
+        proposals.resize(max_det);
+    }
+    std::sort(proposals.begin(), proposals.end(), prob_greater);
 
-    // apply nms with nms_threshold
-    std::vector<int> picked;
-    nms_sorted_bboxes(proposals, picked, nms_threshold);
+    int count = (int)proposals.size();
 
-    int count = picked.size();
 
     objects.resize(count);
     for (int i = 0; i < count; i++)
     {
-        objects[i] = proposals[picked[i]];
+        objects[i] = proposals[i];
 
         // adjust offset to original unpadded
         float x0 = (objects[i].rect.x - (wpad / 2)) / scale;
@@ -383,16 +368,6 @@ int YOLO11_det::detect(const cv::Mat& rgb, std::vector<Object>& objects)
         objects[i].rect.width = x1 - x0;
         objects[i].rect.height = y1 - y0;
     }
-
-    // sort objects by area
-    struct
-    {
-        bool operator()(const Object& a, const Object& b) const
-        {
-            return a.rect.area() > b.rect.area();
-        }
-    } objects_area_greater;
-    std::sort(objects.begin(), objects.end(), objects_area_greater);
 
     return 0;
 }

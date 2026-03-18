@@ -39,6 +39,7 @@ public class RhinoScriptExecutor {
         void onMove(String direction, float speed);
         void onRotate(String direction, float speed);
         void onLift(String direction, float speed);
+        void onDrive(float x, float y, float r);
         void onStop();
     }
     
@@ -222,6 +223,8 @@ public class RhinoScriptExecutor {
             // Movement functions
             "function move(direction, speed) { robot.move(direction, speed); }\n" +
             "function rotate(direction, speed) { robot.rotate(direction, speed); }\n" +
+            "function drive(x, y, r) { robot.drive(x, y, r); }\n" +
+            "function lift(direction, speed) { robot.lift(direction, speed); }\n" +
             "function stop() { robot.stop(); }\n" +
             
             // Timing function (use sleep to avoid calling Object.wait)
@@ -241,6 +244,8 @@ public class RhinoScriptExecutor {
             "var BACKWARD = 'backward';\n" +
             "var LEFT = 'left';\n" +
             "var RIGHT = 'right';\n" +
+            "var UP = 'up';\n" +
+            "var DOWN = 'down';\n" +
             // YOLO detection helpers
             "function onDetection(fn) { this.__yolo_onDetection = fn; }\n" +
             "function getLastDetections() { try { return JSON.parse(robot.getLastDetections()); } catch(e) { return []; } }\n";
@@ -316,6 +321,23 @@ public class RhinoScriptExecutor {
             appendOutput("rotate('" + direction + "', " + s + ")");
             if (callback != null) {
                 callback.onRotate(direction, s);
+            }
+        }
+        
+        /**
+         * Drive the robot with specific X, Y, and Rotation values.
+         * @param x Strafe speed -1.0 to 1.0
+         * @param y Forward/Backward speed -1.0 to 1.0
+         * @param r Rotation speed -1.0 to 1.0
+         */
+        public void drive(double x, double y, double r) {
+            checkRunning();
+            float fx = Math.max(-1f, Math.min(1f, (float) x));
+            float fy = Math.max(-1f, Math.min(1f, (float) y));
+            float fr = Math.max(-1f, Math.min(1f, (float) r));
+            appendOutput("drive(" + fx + ", " + fy + ", " + fr + ")");
+            if (callback != null) {
+                callback.onDrive(fx, fy, fr);
             }
         }
         

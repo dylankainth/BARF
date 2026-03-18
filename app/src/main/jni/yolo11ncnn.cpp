@@ -114,11 +114,12 @@ static int draw_fps(cv::Mat& rgb)
 
 static YOLO11* g_yolo11 = 0;
 static ncnn::Mutex lock;
+static ncnn::Mutex g_callback_lock;
 static std::atomic<int> g_display_rotation{0};
 // JavaVM pointer stored so native thread can call back into Java
 static JavaVM* g_jvm_global = nullptr;
-// Global reference to the registered MainActivity instance (set via registerActivity)
-static jobject g_main_activity_global = nullptr;
+// Global reference to MainActivity class (set via registerActivity)
+static jclass g_main_activity_class_global = nullptr;
 // AprilTag detector — created once, reused every frame
 static AprilTagDetector* g_apriltag = nullptr;
 
@@ -206,21 +207,27 @@ void MyNdkCamera::on_image_render(cv::Mat& rgb) const
                 env = nullptr;
         }
 
-        if (env && g_main_activity_global != nullptr)
+        jclass activity_cls = nullptr;
+        if (env)
         {
-            jclass cls = env->GetObjectClass(g_main_activity_global);
-            if (cls)
+            ncnn::MutexLockGuard cb_guard(g_callback_lock);
+            if (g_main_activity_class_global != nullptr)
             {
-                jmethodID mid = env->GetStaticMethodID(cls,
-                    "pushDetectionsToScripts", "(Ljava/lang/String;)V");
-                if (mid)
-                {
-                    jstring jstr = env->NewStringUTF(json.c_str());
-                    env->CallStaticVoidMethod(cls, mid, jstr);
-                    env->DeleteLocalRef(jstr);
-                }
-                env->DeleteLocalRef(cls);
+                activity_cls = (jclass)env->NewLocalRef(g_main_activity_class_global);
             }
+        }
+
+        if (env && activity_cls != nullptr)
+        {
+            jmethodID mid = env->GetStaticMethodID(activity_cls,
+                "pushDetectionsToScripts", "(Ljava/lang/String;)V");
+            if (mid)
+            {
+                jstring jstr = env->NewStringUTF(json.c_str());
+                env->CallStaticVoidMethod(activity_cls, mid, jstr);
+                env->DeleteLocalRef(jstr);
+            }
+            env->DeleteLocalRef(activity_cls);
         }
 
         if (env && attached)
@@ -255,15 +262,22 @@ JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved)
 JNIEXPORT void JNICALL Java_com_tencent_yolo11ncnn_YOLO11Ncnn_registerActivity(JNIEnv* env, jobject thiz, jobject activity)
 {
     __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "registerActivity called");
-    if (g_main_activity_global != nullptr)
+    ncnn::MutexLockGuard cb_guard(g_callback_lock);
+
+    if (g_main_activity_class_global != nullptr)
     {
-        env->DeleteGlobalRef(g_main_activity_global);
-        g_main_activity_global = nullptr;
+        env->DeleteGlobalRef(g_main_activity_class_global);
+        g_main_activity_class_global = nullptr;
     }
 
     if (activity != nullptr)
     {
-        g_main_activity_global = env->NewGlobalRef(activity);
+        jclass cls = env->GetObjectClass(activity);
+        if (cls != nullptr)
+        {
+            g_main_activity_class_global = (jclass)env->NewGlobalRef(cls);
+            env->DeleteLocalRef(cls);
+        }
     }
 }
 
@@ -285,14 +299,15 @@ JNIEXPORT void JNI_OnUnload(JavaVM* vm, void* reserved)
 
     delete g_camera;
     g_camera = 0;
-    if (g_main_activity_global != nullptr)
+    if (g_main_activity_class_global != nullptr)
     {
         JNIEnv* env = nullptr;
         if (g_jvm_global && g_jvm_global->GetEnv((void**)&env, JNI_VERSION_1_4) == JNI_OK)
         {
-            env->DeleteGlobalRef(g_main_activity_global);
+            ncnn::MutexLockGuard cb_guard(g_callback_lock);
+            env->DeleteGlobalRef(g_main_activity_class_global);
         }
-        g_main_activity_global = nullptr;
+        g_main_activity_class_global = nullptr;
     }
 }
 
@@ -330,8 +345,12 @@ JNIEXPORT jboolean JNICALL Java_com_tencent_yolo11ncnn_YOLO11Ncnn_loadModel(JNIE
         "m"
     };
 
-    std::string parampath = std::string("yolo11") + modeltypes[(int)modelid] + tasknames[(int)taskid] + ".ncnn.param";
-    std::string modelpath = std::string("yolo11") + modeltypes[(int)modelid] + tasknames[(int)taskid] + ".ncnn.bin";
+    std::string yoloname = "yolo11";
+    if (taskid==0){
+        yoloname = "yolo26";
+    }
+    std::string parampath = yoloname + modeltypes[(int)modelid] + tasknames[(int)taskid] + ".ncnn.param";
+    std::string modelpath = yoloname + modeltypes[(int)modelid] + tasknames[(int)taskid] + ".ncnn.bin";
     bool use_gpu = (int)cpugpu == 1;
     bool use_turnip = (int)cpugpu == 2;
 
