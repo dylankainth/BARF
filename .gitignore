@@ -10,6 +10,7 @@ app/build/
 app/build/
 .gradle/
 .gradle
+venv
 app/.cxx/
 .gradle/file-system.probe
 .gradle/8.12/executionHistory/executionHistory.bin
