@@ -23,6 +23,7 @@
 #include <string>
 #include <vector>
 #include <atomic>
+#include <algorithm>
 
 #include <platform.h>
 #include <benchmark.h>
@@ -116,6 +117,8 @@ static YOLO11* g_yolo11 = 0;
 static ncnn::Mutex lock;
 static ncnn::Mutex g_callback_lock;
 static std::atomic<int> g_display_rotation{0};
+static std::atomic<bool> g_yolo_enabled{false};
+static std::atomic<bool> g_apriltag_enabled{false};
 // JavaVM pointer stored so native thread can call back into Java
 static JavaVM* g_jvm_global = nullptr;
 // Global reference to MainActivity class (set via registerActivity)
@@ -152,6 +155,7 @@ void MyNdkCamera::on_image_render(cv::Mat& rgb) const
     std::vector<AprilTagDetection> atags;
 
     // ---- YOLO11 detection ------------------------------------------------
+    if (g_yolo_enabled.load())
     {
         ncnn::MutexLockGuard g(lock);
 
@@ -167,7 +171,7 @@ void MyNdkCamera::on_image_render(cv::Mat& rgb) const
     }
 
     // ---- AprilTag detection (independent of YOLO lock) -------------------
-    if (g_apriltag)
+    if (g_apriltag_enabled.load() && g_apriltag)
     {
         cv::Mat gray;
         cv::cvtColor(rgb, gray, CV_BGR2GRAY);
@@ -183,10 +187,14 @@ void MyNdkCamera::on_image_render(cv::Mat& rgb) const
         for (size_t i = 0; i < yolo_objects.size(); i++)
         {
             const Object& o = yolo_objects[i];
+            const float xn = rgb.cols > 0 ? std::max(0.f, std::min(1.f, o.rect.x / (float)rgb.cols)) : 0.f;
+            const float yn = rgb.rows > 0 ? std::max(0.f, std::min(1.f, o.rect.y / (float)rgb.rows)) : 0.f;
+            const float wn = rgb.cols > 0 ? std::max(0.f, std::min(1.f, o.rect.width / (float)rgb.cols)) : 0.f;
+            const float hn = rgb.rows > 0 ? std::max(0.f, std::min(1.f, o.rect.height / (float)rgb.rows)) : 0.f;
             char buf[256];
             snprintf(buf, sizeof(buf),
-                "{\"label\":%d,\"x\":%.1f,\"y\":%.1f,\"w\":%.1f,\"h\":%.1f,\"score\":%.4f}",
-                o.label, o.rect.x, o.rect.y, o.rect.width, o.rect.height, o.prob);
+                "{\"label\":%d,\"x\":%.4f,\"y\":%.4f,\"w\":%.4f,\"h\":%.4f,\"score\":%.4f}",
+                o.label, xn, yn, wn, hn, o.prob);
             yolo_json += buf;
             if (i + 1 < yolo_objects.size()) yolo_json += ",";
         }
@@ -194,7 +202,7 @@ void MyNdkCamera::on_image_render(cv::Mat& rgb) const
 
         // Combined payload: {"yolo":[...], "apriltags":[...]}
         std::string json = "{\"yolo\":" + yolo_json
-            + ",\"apriltags\":" + AprilTagDetector::toJson(atags) + "}";
+            + ",\"apriltags\":" + AprilTagDetector::toJson(atags, rgb.cols, rgb.rows) + "}";
 
         // Attach to JVM and call MainActivity.pushDetectionsToScripts
         JNIEnv* env = nullptr;
@@ -450,6 +458,16 @@ JNIEXPORT void JNICALL Java_com_tencent_yolo11ncnn_YOLO11Ncnn_setDisplayOrientat
         g_display_rotation.store(d);
         __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "setDisplayOrientation %d", d);
     }
+}
+
+JNIEXPORT void JNICALL Java_com_tencent_yolo11ncnn_YOLO11Ncnn_setYoloEnabled(JNIEnv* env, jobject thiz, jboolean enabled)
+{
+    g_yolo_enabled.store(enabled);
+}
+
+JNIEXPORT void JNICALL Java_com_tencent_yolo11ncnn_YOLO11Ncnn_setAprilTagEnabled(JNIEnv* env, jobject thiz, jboolean enabled)
+{
+    g_apriltag_enabled.store(enabled);
 }
 
 }

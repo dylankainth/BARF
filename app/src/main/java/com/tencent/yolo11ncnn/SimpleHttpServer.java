@@ -45,6 +45,8 @@ public class SimpleHttpServer extends NanoHTTPD {
         void onDrive(float x, float y, float r);
         void onStop();
         void onCameraSwitch();
+        void setYoloEnabled(boolean enabled);
+        void setAprilTagEnabled(boolean enabled);
         RobotStatus getRobotStatus();
     }
     
@@ -125,6 +127,20 @@ public class SimpleHttpServer extends NanoHTTPD {
             public void onStop() {
                 if (robotCallback != null) {
                     robotCallback.onStop();
+                }
+            }
+
+            @Override
+            public void setYoloEnabled(boolean enabled) {
+                if (robotCallback != null) {
+                    robotCallback.setYoloEnabled(enabled);
+                }
+            }
+
+            @Override
+            public void setAprilTagEnabled(boolean enabled) {
+                if (robotCallback != null) {
+                    robotCallback.setAprilTagEnabled(enabled);
                 }
             }
         });
@@ -613,8 +629,8 @@ public class SimpleHttpServer extends NanoHTTPD {
             JsonObject response = new JsonObject();
             response.addProperty("success", true);
             response.addProperty("robotIp", robotIp);
-            response.addProperty("udpPort", 4210);
-            response.addProperty("message", "Robot IP configured (UDP test not implemented yet)");
+            response.addProperty("robotPort", 4210);
+            response.addProperty("message", "Robot IP configured");
             
             Log.i(TAG, "Robot test - IP: " + robotIp + ", Port: 4210");
             return createJsonResponse(Response.Status.OK, response.toString());

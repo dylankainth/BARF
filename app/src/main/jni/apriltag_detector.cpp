@@ -156,21 +156,43 @@ void AprilTagDetector::draw(cv::Mat& rgb,
 // ---------------------------------------------------------------------------
 
 /*static*/
-std::string AprilTagDetector::toJson(const std::vector<AprilTagDetection>& detections)
+std::string AprilTagDetector::toJson(const std::vector<AprilTagDetection>& detections,
+                                       int imageWidth,
+                                       int imageHeight)
 {
+    auto normX = [&](float x) {
+        if (imageWidth <= 0) return x;
+        return std::max(0.f, std::min(1.f, x / (float)imageWidth));
+    };
+    auto normY = [&](float y) {
+        if (imageHeight <= 0) return y;
+        return std::max(0.f, std::min(1.f, y / (float)imageHeight));
+    };
+
     std::string json = "[";
     for (size_t i = 0; i < detections.size(); i++)
     {
         const auto& d = detections[i];
+        float cx = normX(d.cx);
+        float cy = normY(d.cy);
+        float c00 = normX(d.corners[0][0]);
+        float c01 = normY(d.corners[0][1]);
+        float c10 = normX(d.corners[1][0]);
+        float c11 = normY(d.corners[1][1]);
+        float c20 = normX(d.corners[2][0]);
+        float c21 = normY(d.corners[2][1]);
+        float c30 = normX(d.corners[3][0]);
+        float c31 = normY(d.corners[3][1]);
+
         char buf[256];
         snprintf(buf, sizeof(buf),
-            "{\"id\":%d,\"cx\":%.1f,\"cy\":%.1f,"
-            "\"corners\":[[%.1f,%.1f],[%.1f,%.1f],[%.1f,%.1f],[%.1f,%.1f]]}",
-            d.id, d.cx, d.cy,
-            d.corners[0][0], d.corners[0][1],
-            d.corners[1][0], d.corners[1][1],
-            d.corners[2][0], d.corners[2][1],
-            d.corners[3][0], d.corners[3][1]);
+            "{\"id\":%d,\"cx\":%.4f,\"cy\":%.4f,"
+            "\"corners\":[[%.4f,%.4f],[%.4f,%.4f],[%.4f,%.4f],[%.4f,%.4f]]}",
+            d.id, cx, cy,
+            c00, c01,
+            c10, c11,
+            c20, c21,
+            c30, c31);
         json += buf;
         if (i + 1 < detections.size())
             json += ",";

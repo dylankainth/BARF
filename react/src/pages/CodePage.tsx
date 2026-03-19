@@ -11,12 +11,19 @@ export default function CodePage() {
   const [running, setRunning] = useState(false);
   const [output, setOutput] = useState<string>("");
   const saveTimer = useRef<number | null>(null);
+  const logRef = useRef<HTMLPreElement | null>(null);
 
   useEffect(() => {
     loadScript();
     const iv = setInterval(fetchStatus, 1000);
     return () => clearInterval(iv);
   }, []);
+
+  useEffect(() => {
+    if (logRef.current) {
+      logRef.current.scrollTop = logRef.current.scrollHeight;
+    }
+  }, [output]);
 
   async function loadScript() {
     try {
@@ -94,7 +101,7 @@ export default function CodePage() {
                 onClick={runScript} disabled={running}
                 className="rounded-xl border border-[#3a3d44] bg-[linear-gradient(135deg,#1b1d23,#14161c)] px-4 py-2 text-sm font-semibold text-zinc-100 shadow-[0_12px_28px_rgba(0,0,0,0.35)] transition duration-200 ease-out hover:-translate-y-[1px] hover:border-[#3a3d44] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 hover:cursor-pointer"
                 >
-                Run
+                Run!
                 </button>
 
                  <button
@@ -121,7 +128,12 @@ export default function CodePage() {
             <div className="mb-3 text-sm font-semibold tracking-wide">Logs</div>
 
             <div className={`mt-4 p-3 rounded border ${output ? "border-destructive" : "border-[color:var(--popover-foreground)]"}`}>
-                <pre className="text-sm text-[color:var(--primary-foreground)] max-h-40 overflow-y-auto">{output || "(no output)"}</pre>
+                <pre
+                  ref={logRef}
+                  className="text-sm text-[color:var(--primary-foreground)] max-h-40 overflow-y-auto"
+                >
+                  {output || "(no output)"}
+                </pre>
             </div>
            
           </article>
