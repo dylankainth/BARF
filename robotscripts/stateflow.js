@@ -1,11 +1,15 @@
-// http://10.104.125.78:8080/
-// 10.104.125.167
 // Configuration & Constants
 var PING_PONG_LABEL = 32;
 var CENTER_X = 0.5; // Assuming normalized YOLO coordinates (0.0 to 1.0)
-var X_OFFSET = 0.1; // Adjust if the camera is not perfectly centered on the robot
 var TARGET_CENTER_TOLERANCE = 0.1; // Margin of error to consider ball "centered"
 var SIGHT_TIMEOUT_MS = 500; // How long before considering the ball "lost"
+
+// Speed Configurations
+var ROTATE_SPEED_MULTIPLIER = 0.65; // Adjust this to make the robot faster or slower overall
+var SEARCH_ROTATE_SPEED = 0.3; // Speed for blind spinning
+var TRACK_FORWARD_SPEED = 0.2; // Slowly move forward while aligning
+var APPROACH_FORWARD_SPEED = 0.4; // Speed up once the ball is centered
+var CAPTURE_FORWARD_SPEED = 0.5; // Blind drive speed for the final capture
 
 // States
 var STATE_SEARCH_BALL = 'SEARCH_BALL';
@@ -27,12 +31,9 @@ var kd = 0.4;
 var previousError = 0;
 var integral = 0;
 
-
-var ROTATE_SPEED_MULTIPLIER = 0.65; // Adjust this to make the robot faster or slower overall
-
 // Update tracking data when YOLO detects objects
 onDetection(function(dets) {
-    if (!dets || dets.length === 0) return;
+    if (!dets) return;
     
     var yolodets = dets.get("yolo");
     if (!yolodets) return;
@@ -57,7 +58,7 @@ onDetection(function(dets) {
 
     // If we found a ball, update our tracking variables
     if (bestBall) {
-        ballX = parseInt(bestBall.x) + X_OFFSET; // Apply offset to center on robot
+        ballX = bestBall.x;
         ballY = bestBall.y;
         lastSeenTime = Date.now();
     }
@@ -78,6 +79,8 @@ function calculatePIDRotation(currentX) {
 }
 
 // Main State Machine Loop
+stopAprilTag();
+startYolo();
 while (true) {
     try {
         var now = Date.now();
@@ -88,7 +91,7 @@ while (true) {
             
             case STATE_SEARCH_BALL:
                 // Action: Rotate slowly scanning for ping pong balls
-                drive(0, 0, 0.3 * ROTATE_SPEED_MULTIPLIER); // Sideways: 0, Forward: 0, Rotate: 30% Right
+                drive(0, 0, SEARCH_ROTATE_SPEED * ROTATE_SPEED_MULTIPLIER); 
                 
                 // Transition: ball_detected
                 if (ballVisible) {
@@ -107,9 +110,9 @@ while (true) {
                     break;
                 }
 
-                // Action: PID steering using ball_x
+                // Action: PID steering using ball_x while slowly driving forward
                 var rotation = calculatePIDRotation(ballX);
-                drive(0, 0, rotation * ROTATE_SPEED_MULTIPLIER); // Rotate to center ball
+                drive(0, TRACK_FORWARD_SPEED, rotation * ROTATE_SPEED_MULTIPLIER); 
 
                 // Transition: ball_centered
                 if (Math.abs(ballX - CENTER_X) < TARGET_CENTER_TOLERANCE) {
@@ -127,11 +130,11 @@ while (true) {
                     break;
                 }
 
-                // Action: Drive forward & Continue PID correction
+                // Action: Drive forward faster & Continue PID correction
                 var approachRotation = calculatePIDRotation(ballX);
-                drive(0, 0.4, approachRotation * ROTATE_SPEED_MULTIPLIER); // Drive forward 40% while tracking
+                drive(0, APPROACH_FORWARD_SPEED, approachRotation * ROTATE_SPEED_MULTIPLIER); 
 
-                // Optional fallback: If the ball drastically leaves the center, go back to tracking
+                // Optional fallback: If the ball drastically leaves the center, go back to tracking/slowing down
                 if (Math.abs(ballX - CENTER_X) > (TARGET_CENTER_TOLERANCE * 2)) {
                     currentState = STATE_TRACK_BALL;
                 }
@@ -139,7 +142,7 @@ while (true) {
 
             case STATE_CAPTURE_DRIVE:
                 // Action: Drive forward blindly to capture
-                drive(0, 0.5, 0); 
+                drive(0, CAPTURE_FORWARD_SPEED, 0); 
                 
                 // Transition: timer_done
                 if (now - captureStartTime >= 2000) {
@@ -149,7 +152,7 @@ while (true) {
                 break;
         }
 
-        wait(50); // 50ms delay to run the loop at ~20Hz
+        wait(5); // 5ms delay to run the loop at ~200Hz, adjust as needed for performance
         
     } catch (e) {
         log("Script interrupted or stopped: " + e);
