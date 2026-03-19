@@ -24,6 +24,8 @@ public class YOLO11Ncnn
     public native boolean closeCamera();
     public native boolean setOutputWindow(Surface surface);
     public native void setDisplayOrientation(int degrees);
+    public native void setYoloEnabled(boolean enabled);
+    public native void setAprilTagEnabled(boolean enabled);
 
     // Register the Android Activity instance so native code can callback safely
     public native void registerActivity(android.app.Activity activity);

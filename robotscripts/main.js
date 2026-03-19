@@ -31,6 +31,8 @@ onDetection(function(dets) {
 });
 
 // Heartbeat loop to keep the script running (will exit if script is stopped)
+stopApriltag();
+startYolo();
 while (true) {
     try {
         // move(FORWARD, 0.5);

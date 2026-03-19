@@ -41,6 +41,8 @@ public class RhinoScriptExecutor {
         void onLift(String direction, float speed);
         void onDrive(float x, float y, float r);
         void onStop();
+        void setYoloEnabled(boolean enabled);
+        void setAprilTagEnabled(boolean enabled);
     }
     
     public RhinoScriptExecutor(RobotCommandCallback callback) {
@@ -128,6 +130,8 @@ public class RhinoScriptExecutor {
         
         // Stop the robot
         robotApi.stop();
+        robotApi.setYoloEnabled(false);
+        robotApi.setAprilTagEnabled(false);
         appendOutput("Script stopped by user");
     }
 
@@ -246,6 +250,13 @@ public class RhinoScriptExecutor {
             "var RIGHT = 'right';\n" +
             "var UP = 'up';\n" +
             "var DOWN = 'down';\n" +
+            // Detection control
+            "function setYoloEnabled(enabled) { robot.setYoloEnabled(enabled); }\n" +
+            "function setAprilTagEnabled(enabled) { robot.setAprilTagEnabled(enabled); }\n" +
+            "function startYolo() { robot.setYoloEnabled(true); }\n" +
+            "function stopYolo() { robot.setYoloEnabled(false); }\n" +
+            "function startAprilTag() { robot.setAprilTagEnabled(true); }\n" +
+            "function stopAprilTag() { robot.setAprilTagEnabled(false); }\n" +
             // YOLO detection helpers
             "function onDetection(fn) { this.__yolo_onDetection = fn; }\n" +
             "function getLastDetections() { try { return JSON.parse(robot.getLastDetections()); } catch(e) { return []; } }\n";
@@ -346,6 +357,8 @@ public class RhinoScriptExecutor {
          */
         public void stop() {
             appendOutput("stop()");
+            setYoloEnabled(false);
+            setAprilTagEnabled(false);
             if (callback != null) {
                 callback.onStop();
             }
@@ -391,6 +404,24 @@ public class RhinoScriptExecutor {
          */
         public String getLastDetections() {
             return lastDetectionsJson != null ? lastDetectionsJson : "[]";
+        }
+
+        /**
+         * Enable or disable YOLO detection.
+         */
+        public void setYoloEnabled(boolean enabled) {
+            if (callback != null) {
+                callback.setYoloEnabled(enabled);
+            }
+        }
+
+        /**
+         * Enable or disable AprilTag detection.
+         */
+        public void setAprilTagEnabled(boolean enabled) {
+            if (callback != null) {
+                callback.setAprilTagEnabled(enabled);
+            }
         }
         
         /**
