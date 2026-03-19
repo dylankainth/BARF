@@ -35,6 +35,10 @@ import android.widget.Button;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -42,6 +46,7 @@ import androidx.core.content.ContextCompat;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.util.Locale;
 
 // Removed complex robot imports - using simple server now
 
@@ -124,6 +129,14 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Si
     
     // Video streaming
     private Thread videoStreamThread;
+
+    // Quaternion extraction (rotation vector)
+    private SensorManager sensorManager;
+    private Sensor rotationVectorSensor;
+    private SensorEventListener rotationListener;
+    private final float[] lastQuaternion = new float[4];
+    private static final float[] sLastQuaternion = new float[] {1f, 0f, 0f, 0f};
+    private long lastQuaternionLogTime = 0;
 
     /** Called when the activity is first created. */
     @Override
@@ -232,6 +245,63 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Si
         
         // Initialize UDP socket for robot communication
         initializeUdpSocket();
+
+        // Initialize rotation vector listener for quaternion extraction
+        setupRotationVectorListener();
+    }
+
+    private void setupRotationVectorListener() {
+        sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+        if (sensorManager == null) {
+            Log.w("MainActivity", "SensorManager not available");
+            return;
+        }
+
+        rotationVectorSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+        if (rotationVectorSensor == null) {
+            Log.w("MainActivity", "Rotation vector sensor not available");
+            return;
+        }
+
+        rotationListener = new SensorEventListener() {
+            @Override
+            public void onSensorChanged(SensorEvent event) {
+                float[] quat = new float[4];
+                SensorManager.getQuaternionFromVector(quat, event.values);
+
+                lastQuaternion[0] = quat[0];
+                lastQuaternion[1] = quat[1];
+                lastQuaternion[2] = quat[2];
+                lastQuaternion[3] = quat[3];
+
+                sLastQuaternion[0] = quat[0];
+                sLastQuaternion[1] = quat[1];
+                sLastQuaternion[2] = quat[2];
+                sLastQuaternion[3] = quat[3];
+
+                long now = System.currentTimeMillis();
+                if (now - lastQuaternionLogTime >= 500) {
+                    Log.d("MainActivity", "Quaternion wxyz: " +
+                            lastQuaternion[0] + ", " +
+                            lastQuaternion[1] + ", " +
+                            lastQuaternion[2] + ", " +
+                            lastQuaternion[3]);
+                    lastQuaternionLogTime = now;
+                }
+            }
+
+            @Override
+            public void onAccuracyChanged(Sensor sensor, int accuracy) {
+            }
+        };
+    }
+
+    public static String getLastQuaternionJson() {
+        float w = sLastQuaternion[0];
+        float x = sLastQuaternion[1];
+        float y = sLastQuaternion[2];
+        float z = sLastQuaternion[3];
+        return String.format(Locale.US, "{\"w\":%.6f,\"x\":%.6f,\"y\":%.6f,\"z\":%.6f}", w, x, y, z);
     }
     
     /**
@@ -657,6 +727,10 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Si
         }
 
         yolo11ncnn.openCamera(facing);
+
+        if (sensorManager != null && rotationVectorSensor != null && rotationListener != null) {
+            sensorManager.registerListener(rotationListener, rotationVectorSensor, SensorManager.SENSOR_DELAY_GAME);
+        }
     }
 
     @Override
@@ -665,6 +739,10 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Si
         super.onPause();
 
         yolo11ncnn.closeCamera();
+
+        if (sensorManager != null && rotationListener != null) {
+            sensorManager.unregisterListener(rotationListener);
+        }
     }
     
     @Override
@@ -691,6 +769,10 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Si
         if (udpSocket != null && !udpSocket.isClosed()) {
             udpSocket.close();
             Log.i("MainActivity", "UDP socket closed");
+        }
+
+        if (sensorManager != null && rotationListener != null) {
+            sensorManager.unregisterListener(rotationListener);
         }
     }
 }

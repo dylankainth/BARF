@@ -248,7 +248,8 @@ public class RhinoScriptExecutor {
             "var DOWN = 'down';\n" +
             // YOLO detection helpers
             "function onDetection(fn) { this.__yolo_onDetection = fn; }\n" +
-            "function getLastDetections() { try { return JSON.parse(robot.getLastDetections()); } catch(e) { return []; } }\n";
+            "function getLastDetections() { try { return JSON.parse(robot.getLastDetections()); } catch(e) { return []; } }\n" +
+            "function getQuaternion() { try { return JSON.parse(robot.getQuaternion()); } catch(e) { return null; } }\n";
         
         cx.evaluateString(scope, helperFunctions, "helpers", 1, null);
 
@@ -391,6 +392,13 @@ public class RhinoScriptExecutor {
          */
         public String getLastDetections() {
             return lastDetectionsJson != null ? lastDetectionsJson : "[]";
+        }
+
+        /**
+         * Return the last quaternion JSON string (as stored by MainActivity).
+         */
+        public String getQuaternion() {
+            return MainActivity.getLastQuaternionJson();
         }
         
         /**
