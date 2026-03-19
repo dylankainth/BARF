@@ -30,6 +30,11 @@ public class SimpleHttpServer extends NanoHTTPD {
     private String robotIp = "192.168.1.100"; // Default robot IP
     private AudioPlayer audioPlayer;
     
+    // Robot IP storage
+    private static final String ROBOT_PREFS = "RobotSettingsPrefs";
+    private static final String ROBOT_IP_KEY = "robot_ip";
+    private SharedPreferences robotPrefs;
+    
     // Script storage and execution
     private static final String SCRIPT_PREFS = "RobotScriptPrefs";
     private static final String SCRIPT_KEY = "saved_script";
@@ -90,7 +95,12 @@ public class SimpleHttpServer extends NanoHTTPD {
         this.assetManager = context.getAssets();
         this.videoStreamServer = new VideoStreamServer();
         this.scriptPrefs = context.getSharedPreferences(SCRIPT_PREFS, Context.MODE_PRIVATE);
+        this.robotPrefs = context.getSharedPreferences(ROBOT_PREFS, Context.MODE_PRIVATE);
         this.audioPlayer = new AudioPlayer(context);
+        
+        // Load saved robot IP from preferences
+        this.robotIp = this.robotPrefs.getString(ROBOT_IP_KEY, "192.168.1.100");
+        Log.i(TAG, "Loaded robot IP from storage: " + this.robotIp);
         Log.i(TAG, "Simple HTTP server initialized on port " + port);
     }
     
@@ -663,7 +673,10 @@ public class SimpleHttpServer extends NanoHTTPD {
                 String newIp = request.get("ip").getAsString();
                 if (isValidIpAddress(newIp)) {
                     robotIp = newIp;
-                    Log.i(TAG, "Robot IP set to: " + robotIp);
+                    
+                    // Save to SharedPreferences for persistence
+                    this.robotPrefs.edit().putString(ROBOT_IP_KEY, robotIp).apply();
+                    Log.i(TAG, "Robot IP set to: " + robotIp + " (saved to storage)");
                     
                     JsonObject response = new JsonObject();
                     response.addProperty("success", true);
