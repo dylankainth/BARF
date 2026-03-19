@@ -1,4 +1,5 @@
 #include "apriltag_detector.h"
+#include "apriltag_pose.h"
 
 // apriltag C library headers (found via target_include_directories in CMakeLists)
 #include "apriltag.h"
@@ -98,12 +99,60 @@ void AprilTagDetector::detect(const cv::Mat& gray,
             d.corners[j][0] = (float)det->p[j][0];
             d.corners[j][1] = (float)det->p[j][1];
         }
+
+        // --- NEW NATIVE POSE ESTIMATION ---
+        
+        // 1. Setup the info struct with your camera's parameters
+        apriltag_detection_info_t info;
+        info.det = det;
+        info.tagsize = APRILTAG_SIZE_METERS; // Tag size in meters
+        // Approximate focal length using image width (as discussed earlier)
+        info.fx = gray.cols; 
+        info.fy = gray.cols;
+        info.cx = gray.cols / 2.0;
+        info.cy = gray.rows / 2.0;
+
+        // 2. Estimate the pose
+        apriltag_pose_t pose;
+        double err = estimate_tag_pose(&info, &pose);
+
+        // 3. Extract the 3x3 Rotation Matrix (pose.R)
+        // pose.R is a matrix structure containing the rotation data.
+        double r00 = MATD_EL(pose.R, 0, 0);
+        double r10 = MATD_EL(pose.R, 1, 0);
+        double r20 = MATD_EL(pose.R, 2, 0);
+        double r21 = MATD_EL(pose.R, 2, 1);
+        double r22 = MATD_EL(pose.R, 2, 2);
+
+        // 4. Convert Rotation Matrix to Euler Angles (Pitch, Yaw, Roll)
+        double sy = std::sqrt(r00 * r00 + r10 * r10);
+        bool singular = sy < 1e-6; // Check for Gimbal lock
+
+        float pitch_rad, yaw_rad, roll_rad;
+        if (!singular) {
+            pitch_rad = std::atan2(-r20, sy);
+            yaw_rad   = std::atan2(r10, r00);
+            roll_rad  = std::atan2(r21, r22);
+        } else {
+            pitch_rad = std::atan2(-r20, sy);
+            yaw_rad   = 0;
+            roll_rad  = std::atan2(-MATD_EL(pose.R, 1, 2), MATD_EL(pose.R, 1, 1));
+        }
+
+        // Convert radians to degrees and save to your struct
+        d.pitch = pitch_rad * (180.0 / M_PI);
+        d.yaw   = yaw_rad * (180.0 / M_PI);
+        d.roll  = roll_rad * (180.0 / M_PI);
+
+
+        // 5. CRITICAL: Free the memory allocated by the AprilTag solver
+        matd_destroy(pose.R);
+        matd_destroy(pose.t);
+
+        // --- END POSE ESTIMATION ---
+
         detections.push_back(d);
-
-        __android_log_print(ANDROID_LOG_DEBUG, TAG,
-            "Tag id=%d  centre=(%.1f, %.1f)", d.id, d.cx, d.cy);
     }
-
     apriltag_detections_destroy(raw);
 }
 
@@ -184,15 +233,18 @@ std::string AprilTagDetector::toJson(const std::vector<AprilTagDetection>& detec
         float c30 = normX(d.corners[3][0]);
         float c31 = normY(d.corners[3][1]);
 
-        char buf[256];
+        char buf[512]; // Increased buffer size to accommodate new fields
         snprintf(buf, sizeof(buf),
             "{\"id\":%d,\"cx\":%.4f,\"cy\":%.4f,"
+            "\"pitch\":%.2f,\"yaw\":%.2f,\"roll\":%.2f,"
             "\"corners\":[[%.4f,%.4f],[%.4f,%.4f],[%.4f,%.4f],[%.4f,%.4f]]}",
-            d.id, cx, cy,
+            d.id, cx, cy, 
+            d.pitch, d.yaw, d.roll,
             c00, c01,
             c10, c11,
             c20, c21,
             c30, c31);
+            
         json += buf;
         if (i + 1 < detections.size())
             json += ",";

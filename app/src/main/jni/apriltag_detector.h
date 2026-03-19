@@ -4,12 +4,17 @@
 #include <vector>
 #include <string>
 
+const float APRILTAG_SIZE_METERS = 0.10f;
+
 // One detected AprilTag
 struct AprilTagDetection
 {
     int   id;           // Tag ID within the family
-    float cx, cy;       // Centre of the tag (pixels)
+    float cx, cy;       // Centre of the tag (normalised to [0,1])
     float corners[4][2]; // Four corners [idx][x or y], counter-clockwise from bottom-left
+    float pitch = 0.0f;
+    float yaw = 0.0f;
+    float roll = 0.0f;
 };
 
 // Wraps the apriltag C library detector.
