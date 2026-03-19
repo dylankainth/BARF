@@ -22,6 +22,8 @@ public class RhinoScriptExecutor {
     private static final String TAG = "RhinoScriptExecutor";
     
     private final RobotApi robotApi;
+    private final AudioApi audioApi;
+    private final AudioPlayer audioPlayer;
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final StringBuilder output = new StringBuilder();
     private String lastError = null;
@@ -45,8 +47,10 @@ public class RhinoScriptExecutor {
         void setAprilTagEnabled(boolean enabled);
     }
     
-    public RhinoScriptExecutor(RobotCommandCallback callback) {
+    public RhinoScriptExecutor(AudioPlayer audioPlayer, RobotCommandCallback callback) {
+        this.audioPlayer = audioPlayer;
         this.robotApi = new RobotApi(callback);
+        this.audioApi = new AudioApi(audioPlayer);
     }
     
     /**
@@ -193,6 +197,10 @@ public class RhinoScriptExecutor {
             Object wrappedApi = Context.javaToJS(robotApi, scope);
             ScriptableObject.putProperty(scope, "robot", wrappedApi);
             
+            // Inject the audio API object
+            Object wrappedAudioApi = Context.javaToJS(audioApi, scope);
+            ScriptableObject.putProperty(scope, "audio", wrappedAudioApi);
+            
             // Inject convenience functions directly into scope
             injectConvenienceFunctions(rhinoContext, scope);
             
@@ -259,7 +267,11 @@ public class RhinoScriptExecutor {
             "function stopAprilTag() { robot.setAprilTagEnabled(false); }\n" +
             // YOLO detection helpers
             "function onDetection(fn) { this.__yolo_onDetection = fn; }\n" +
-            "function getLastDetections() { try { return JSON.parse(robot.getLastDetections()); } catch(e) { return []; } }\n";
+            "function getLastDetections() { try { return JSON.parse(robot.getLastDetections()); } catch(e) { return []; } }\n" +
+            // Audio functions
+            "function playAudio(audioName) { audio.play(audioName); }\n" +
+            "function stopAudio() { audio.stop(); }\n" +
+            "function playSound(audioName) { audio.play(audioName); }\n";
         
         cx.evaluateString(scope, helperFunctions, "helpers", 1, null);
 
@@ -430,6 +442,49 @@ public class RhinoScriptExecutor {
         private void checkRunning() {
             if (!running.get()) {
                 throw new RuntimeException("Script stopped");
+            }
+        }
+    }
+    
+    /**
+     * Audio API class exposed to JavaScript for playing audio files.
+     * All public methods are callable from JS.
+     */
+    public class AudioApi {
+        private final AudioPlayer audioPlayer;
+        
+        public AudioApi(AudioPlayer audioPlayer) {
+            this.audioPlayer = audioPlayer;
+        }
+        
+        /**
+         * Play an audio file by name.
+         * @param audioName Name of the audio file (without extension)
+         */
+        public void play(String audioName) {
+            try {
+                if (audioPlayer != null && audioPlayer.hasAudio(audioName)) {
+                    audioPlayer.play(audioName);
+                    appendOutput("Playing audio: " + audioName);
+                } else {
+                    appendOutput("Audio file not found: " + audioName);
+                }
+            } catch (Exception e) {
+                appendOutput("Error playing audio: " + e.getMessage());
+            }
+        }
+        
+        /**
+         * Stop audio playback.
+         */
+        public void stop() {
+            try {
+                if (audioPlayer != null) {
+                    audioPlayer.stop();
+                    appendOutput("Audio stopped");
+                }
+            } catch (Exception e) {
+                appendOutput("Error stopping audio: " + e.getMessage());
             }
         }
     }

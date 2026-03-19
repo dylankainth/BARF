@@ -28,6 +28,7 @@ public class SimpleHttpServer extends NanoHTTPD {
     private RobotControlCallback robotCallback;
     private VideoStreamServer videoStreamServer;
     private String robotIp = "192.168.1.100"; // Default robot IP
+    private AudioPlayer audioPlayer;
     
     // Script storage and execution
     private static final String SCRIPT_PREFS = "RobotScriptPrefs";
@@ -89,6 +90,7 @@ public class SimpleHttpServer extends NanoHTTPD {
         this.assetManager = context.getAssets();
         this.videoStreamServer = new VideoStreamServer();
         this.scriptPrefs = context.getSharedPreferences(SCRIPT_PREFS, Context.MODE_PRIVATE);
+        this.audioPlayer = new AudioPlayer(context);
         Log.i(TAG, "Simple HTTP server initialized on port " + port);
     }
     
@@ -98,8 +100,8 @@ public class SimpleHttpServer extends NanoHTTPD {
     public void setRobotControlCallback(RobotControlCallback callback) {
         this.robotCallback = callback;
         
-        // Initialize Rhino script executor with robot commands
-        this.scriptExecutor = new RhinoScriptExecutor(new RhinoScriptExecutor.RobotCommandCallback() {
+        // Initialize Rhino script executor with robot commands and audio player
+        this.scriptExecutor = new RhinoScriptExecutor(audioPlayer, new RhinoScriptExecutor.RobotCommandCallback() {
             @Override
             public void onMove(String direction, float speed) {
                 if (robotCallback != null) {
@@ -203,6 +205,10 @@ public class SimpleHttpServer extends NanoHTTPD {
         
         if (videoStreamServer != null) {
             videoStreamServer.stop();
+        }
+        
+        if (audioPlayer != null) {
+            audioPlayer.release();
         }
         
         Log.i(TAG, "Servers stopped");
@@ -355,6 +361,25 @@ public class SimpleHttpServer extends NanoHTTPD {
             case "/api/script/status":
                 if (method == Method.GET) {
                     return handleScriptStatus();
+                }
+                break;
+                
+            // Audio API endpoints
+            case "/api/audio/play":
+                if (method == Method.POST) {
+                    return handleAudioPlay(session);
+                }
+                break;
+                
+            case "/api/audio/stop":
+                if (method == Method.POST) {
+                    return handleAudioStop();
+                }
+                break;
+                
+            case "/api/audio/list":
+                if (method == Method.GET) {
+                    return handleAudioList();
                 }
                 break;
         }
@@ -948,6 +973,85 @@ public class SimpleHttpServer extends NanoHTTPD {
             } catch (Exception e) {
                 Log.w(TAG, "Failed to broadcast detections: " + e.getMessage());
             }
+        }
+    }
+    
+    // ============================================
+    // Audio API Handlers
+    // ============================================
+    
+    /**
+     * Handle POST /api/audio/play - Play an audio file
+     * Body: { "audio": "audio_name" }
+     */
+    private Response handleAudioPlay(IHTTPSession session) {
+        try {
+            String body = getRequestBody(session);
+            JsonObject json = JsonParser.parseString(body).getAsJsonObject();
+            String audioName = json.has("audio") ? json.get("audio").getAsString() : "";
+            
+            if (audioName.isEmpty()) {
+                return createJsonResponse(Response.Status.BAD_REQUEST,
+                        createErrorJson("Missing 'audio' parameter"));
+            }
+            
+            if (!audioPlayer.hasAudio(audioName)) {
+                return createJsonResponse(Response.Status.BAD_REQUEST,
+                        createErrorJson("Audio file not found: " + audioName));
+            }
+            
+            audioPlayer.play(audioName);
+            
+            JsonObject response = new JsonObject();
+            response.addProperty("success", true);
+            response.addProperty("message", "Playing audio: " + audioName);
+            return createJsonResponse(Response.Status.OK, response.toString());
+            
+        } catch (Exception e) {
+            return createJsonResponse(Response.Status.BAD_REQUEST,
+                    createErrorJson("Failed to play audio: " + e.getMessage()));
+        }
+    }
+    
+    /**
+     * Handle POST /api/audio/stop - Stop audio playback
+     */
+    private Response handleAudioStop() {
+        try {
+            audioPlayer.stop();
+            
+            JsonObject response = new JsonObject();
+            response.addProperty("success", true);
+            response.addProperty("message", "Audio stopped");
+            return createJsonResponse(Response.Status.OK, response.toString());
+            
+        } catch (Exception e) {
+            return createJsonResponse(Response.Status.BAD_REQUEST,
+                    createErrorJson("Failed to stop audio: " + e.getMessage()));
+        }
+    }
+    
+    /**
+     * Handle GET /api/audio/list - List available audio files
+     */
+    private Response handleAudioList() {
+        try {
+            String[] audioList = audioPlayer.getAvailableAudio();
+            
+            com.google.gson.JsonArray audioArray = new com.google.gson.JsonArray();
+            for (String audio : audioList) {
+                audioArray.add(audio);
+            }
+            
+            JsonObject response = new JsonObject();
+            response.addProperty("success", true);
+            response.add("audioFiles", audioArray);
+            response.addProperty("count", audioList.length);
+            return createJsonResponse(Response.Status.OK, response.toString());
+            
+        } catch (Exception e) {
+            return createJsonResponse(Response.Status.BAD_REQUEST,
+                    createErrorJson("Failed to list audio files: " + e.getMessage()));
         }
     }
     
