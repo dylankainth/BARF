@@ -199,7 +199,7 @@ void MyNdkCamera::on_image_render(cv::Mat& rgb) const
 
         // Combined payload: {"yolo":[...], "apriltags":[...]}
         std::string json = "{\"yolo\":" + yolo_json
-            + ",\"apriltags\":" + AprilTagDetector::toJson(atags) + "}";
+            + ",\"apriltags\":" + AprilTagDetector::toJson(atags, rgb.cols, rgb.rows) + "}";
 
         // Attach to JVM and call MainActivity.pushDetectionsToScripts
         JNIEnv* env = nullptr;

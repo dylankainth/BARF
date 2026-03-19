@@ -32,7 +32,7 @@ var ROTATE_SPEED_MULTIPLIER = 0.65; // Adjust this to make the robot faster or s
 
 // Update tracking data when YOLO detects objects
 onDetection(function(dets) {
-    if (!dets || dets.length === 0) return;
+    if (!dets) return;
     
     var yolodets = dets.get("yolo");
     if (!yolodets) return;

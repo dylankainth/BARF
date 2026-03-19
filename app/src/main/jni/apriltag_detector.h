@@ -26,9 +26,12 @@ public:
     // Draw tag outlines and IDs onto an RGB/BGR frame.
     void draw(cv::Mat& rgb, const std::vector<AprilTagDetection>& detections) const;
 
-    // Serialise detections into a JSON array string, e.g.:
-    //   [{"id":5,"cx":200.0,"cy":150.0,"corners":[[…],[…],[…],[…]]}]
-    static std::string toJson(const std::vector<AprilTagDetection>& detections);
+    // Serialise detections into a JSON array string.
+    // Coordinates are normalized to [0,1] when image dimensions are provided.
+    // Example: [{"id":5,"cx":0.5000,"cy":0.2500,"corners":[[…],[…],[…],[…]]}]
+    static std::string toJson(const std::vector<AprilTagDetection>& detections,
+                              int imageWidth = 0,
+                              int imageHeight = 0);
 
 private:
     void* m_td; // apriltag_detector_t*, opaque to callers
