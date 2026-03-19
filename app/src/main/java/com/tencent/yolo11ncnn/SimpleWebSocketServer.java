@@ -23,10 +23,25 @@ public class SimpleWebSocketServer extends WebSocketServer {
     // Thread-safe set of connected clients
     private final Set<WebSocket> clients = Collections.newSetFromMap(new ConcurrentHashMap<>());
     
+    // Button event callback interface
+    public interface ButtonEventCallback {
+        void onButtonPressed();
+        void onButtonReleased();
+    }
+    
+    private ButtonEventCallback buttonCallback;
+    
     public SimpleWebSocketServer(int port) {
         super(new InetSocketAddress(port));
         setReuseAddr(true);
         Log.i(TAG, "Simple WebSocket server created on port " + port);
+    }
+    
+    /**
+     * Set the button event callback.
+     */
+    public void setButtonEventCallback(ButtonEventCallback callback) {
+        this.buttonCallback = callback;
     }
     
     @Override
@@ -62,6 +77,12 @@ public class SimpleWebSocketServer extends WebSocketServer {
         String clientId = conn.getRemoteSocketAddress().toString();
         Log.d(TAG, "Received from " + clientId + ": " + message);
         
+        // Check for button events from ESP32
+        if (message.startsWith("button:")) {
+            handleButtonEvent(message);
+            return;
+        }
+        
         // Echo message back to sender
         try {
             JsonObject response = new JsonObject();
@@ -78,6 +99,34 @@ public class SimpleWebSocketServer extends WebSocketServer {
             
         } catch (Exception e) {
             Log.e(TAG, "Failed to process message: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Handle button events from ESP32.
+     */
+    private void handleButtonEvent(String message) {
+        // Format: button:pressed or button:released
+        String[] parts = message.split(":");
+        if (parts.length == 2) {
+            String eventType = parts[1].trim();
+            Log.i(TAG, "Button event received: " + eventType);
+            
+            if (buttonCallback != null) {
+                if ("pressed".equalsIgnoreCase(eventType)) {
+                    try {
+                        buttonCallback.onButtonPressed();
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error in onButtonPressed callback: " + e.getMessage());
+                    }
+                } else if ("released".equalsIgnoreCase(eventType)) {
+                    try {
+                        buttonCallback.onButtonReleased();
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error in onButtonReleased callback: " + e.getMessage());
+                    }
+                }
+            }
         }
     }
     

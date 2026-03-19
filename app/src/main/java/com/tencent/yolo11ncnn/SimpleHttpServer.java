@@ -187,6 +187,24 @@ public class SimpleHttpServer extends NanoHTTPD {
             
             // Start WebSocket server on port 8081
             webSocketServer = new SimpleWebSocketServer(8081);
+            
+            // Set up button event callbacks
+            if (scriptExecutor != null) {
+                webSocketServer.setButtonEventCallback(new SimpleWebSocketServer.ButtonEventCallback() {
+                    @Override
+                    public void onButtonPressed() {
+                        Log.i(TAG, "Button pressed - forwarding to script");
+                        scriptExecutor.onButtonPressed();
+                    }
+                    
+                    @Override
+                    public void onButtonReleased() {
+                        Log.i(TAG, "Button released - forwarding to script");
+                        scriptExecutor.onButtonReleased();
+                    }
+                });
+            }
+            
             webSocketServer.start();
             Log.i(TAG, "WebSocket Server started on port 8081");
             

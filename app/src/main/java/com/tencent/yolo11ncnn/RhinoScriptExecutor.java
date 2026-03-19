@@ -34,6 +34,10 @@ public class RhinoScriptExecutor {
     private volatile ScriptableObject globalScope = null;
     private final Gson gson = new Gson();
     
+    // Button event callbacks
+    private volatile Function buttonPressedCallback = null;
+    private volatile Function buttonReleasedCallback = null;
+    
     /**
      * Callback interface for robot control commands.
      */
@@ -179,6 +183,76 @@ public class RhinoScriptExecutor {
     }
     
     /**
+     * Notify the script that the button was pressed.
+     */
+    public void onButtonPressed() {
+        ScriptableObject scope;
+        synchronized (this) {
+            scope = this.globalScope;
+        }
+
+        if (scope == null) {
+            Log.w(TAG, "No active script scope for button event");
+            return;
+        }
+
+        Context cx = Context.enter();
+        try {
+            cx.setOptimizationLevel(-1);
+
+            Object cb = ScriptableObject.getProperty(scope, "__button_onPressed");
+            if (cb instanceof Function) {
+                Function fn = (Function) cb;
+                try {
+                    fn.call(cx, scope, scope, new Object[]{});
+                    appendOutput("Button pressed event fired");
+                } catch (Exception e) {
+                    appendOutput("Error calling button pressed callback: " + e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error notifying button pressed: " + e.getMessage());
+        } finally {
+            Context.exit();
+        }
+    }
+    
+    /**
+     * Notify the script that the button was released.
+     */
+    public void onButtonReleased() {
+        ScriptableObject scope;
+        synchronized (this) {
+            scope = this.globalScope;
+        }
+
+        if (scope == null) {
+            Log.w(TAG, "No active script scope for button event");
+            return;
+        }
+
+        Context cx = Context.enter();
+        try {
+            cx.setOptimizationLevel(-1);
+
+            Object cb = ScriptableObject.getProperty(scope, "__button_onReleased");
+            if (cb instanceof Function) {
+                Function fn = (Function) cb;
+                try {
+                    fn.call(cx, scope, scope, new Object[]{});
+                    appendOutput("Button released event fired");
+                } catch (Exception e) {
+                    appendOutput("Error calling button released callback: " + e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error notifying button released: " + e.getMessage());
+        } finally {
+            Context.exit();
+        }
+    }
+    
+    /**
      * Execute the script using Rhino.
      */
     private void executeScript(String script) {
@@ -271,7 +345,10 @@ public class RhinoScriptExecutor {
             // Audio functions
             "function playAudio(audioName) { audio.play(audioName); }\n" +
             "function stopAudio() { audio.stop(); }\n" +
-            "function playSound(audioName) { audio.play(audioName); }\n";
+            "function playSound(audioName) { audio.play(audioName); }\n" +
+            // Button event handlers
+            "function onButtonPressed(fn) { this.__button_onPressed = fn; }\n" +
+            "function onButtonReleased(fn) { this.__button_onReleased = fn; }\n";
         
         cx.evaluateString(scope, helperFunctions, "helpers", 1, null);
 
