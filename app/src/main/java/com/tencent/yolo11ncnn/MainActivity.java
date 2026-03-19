@@ -419,39 +419,37 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Si
      */
     private String getDeviceIpAddress() {
         try {
-            java.net.NetworkInterface ni = java.net.NetworkInterface.getByInetAddress(
-                    java.net.InetAddress.getLocalHost());
-            
-            if (ni != null) {
-                java.util.Enumeration<java.net.InetAddress> ias = ni.getInetAddresses();
-                while (ias.hasMoreElements()) {
-                    java.net.InetAddress ia = ias.nextElement();
-                    if (!ia.isLoopbackAddress() && ia instanceof java.net.Inet4Address) {
-                        return ia.getHostAddress();
-                    }
-                }
-            }
-            
-            // Fallback: iterate through all network interfaces
             java.util.Enumeration<java.net.NetworkInterface> interfaces = 
                     java.net.NetworkInterface.getNetworkInterfaces();
             
             while (interfaces.hasMoreElements()) {
-                java.net.NetworkInterface ni2 = interfaces.nextElement();
-                java.util.Enumeration<java.net.InetAddress> addresses = ni2.getInetAddresses();
+                java.net.NetworkInterface ni = interfaces.nextElement();
+                
+                // Skip loopback interfaces and inactive interfaces
+                if (ni.isLoopback() || !ni.isUp()) {
+                    continue;
+                }
+                
+                java.util.Enumeration<java.net.InetAddress> addresses = ni.getInetAddresses();
                 
                 while (addresses.hasMoreElements()) {
                     java.net.InetAddress addr = addresses.nextElement();
+                    
+                    // Only get IPv4 addresses, skip loopback
                     if (!addr.isLoopbackAddress() && addr instanceof java.net.Inet4Address) {
-                        return addr.getHostAddress();
+                        String ip = addr.getHostAddress();
+                        if (ip != null && !ip.isEmpty()) {
+                            Log.d("MainActivity", "Found IP: " + ip + " on interface: " + ni.getName());
+                            return ip;
+                        }
                     }
                 }
             }
         } catch (Exception e) {
-            Log.e("MainActivity", "Error getting device IP: " + e.getMessage());
+            Log.e("MainActivity", "Error getting device IP: " + e.getMessage(), e);
         }
         
-        return "192.168.x.x";  // Fallback if unable to get IP
+        return "localhost";  // Fallback if unable to get IP
     }
     
     // ========== RobotControlCallback Implementation ==========
