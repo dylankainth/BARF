@@ -25,7 +25,9 @@ FetchContent_Declare(
 # Silence the CMP0169 deprecation: we intentionally use FetchContent_Populate
 # to get the sources only, without invoking apriltag's own CMakeLists
 # (its demo executables don't cross-compile for Android).
-cmake_policy(SET CMP0169 OLD)
+if(POLICY CMP0169)
+    cmake_policy(SET CMP0169 OLD)
+endif()
 FetchContent_GetProperties(apriltag)
 if(NOT apriltag_POPULATED)
     FetchContent_Populate(apriltag)
