@@ -42,6 +42,9 @@ import androidx.core.content.ContextCompat;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import org.java_websocket.client.WebSocketClient;
+import org.java_websocket.handshake.ServerHandshake;
+import java.net.URI;
 
 // Removed complex robot imports - using simple server now
 
@@ -97,9 +100,10 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Si
     private volatile boolean isMoving = false;
     private volatile String lastCommand = "none";
     
-    // UDP robot communication
-    private DatagramSocket udpSocket;
-    private static final int ROBOT_UDP_PORT = 4210;
+    // WebSocket robot communication
+    private WebSocketClient wsClient;
+    private static final int ROBOT_WS_PORT = 4210;
+    private String currentRobotIp = null;
     
     // Robot movement state (X,Y,R,E format for ESP32)
     private volatile int robotX = 0;    // Strafe: -255 to 255
@@ -229,9 +233,6 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Si
         
         // Start simple HTTP/WebSocket server
         startSimpleServer();
-        
-        // Initialize UDP socket for robot communication
-        initializeUdpSocket();
     }
     
     /**
@@ -432,8 +433,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Si
                 break;
         }
         
-        // Send UDP command: X,Y,R,E (R=0 for movement, E=0 unused)
-        sendUdpCommand(x, y, 0, 0);
+        // Send WS command: X,Y,R,E (R=0 for movement, E=0 unused)
+        sendWsCommand(x, y, 0, 0);
     }
 
     @Override
@@ -456,8 +457,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Si
                 break;
         }
         
-        // Send UDP command: X,Y,R,E (R=0 for movement, E=0 unused)
-        sendUdpCommand(0, 0, 0, e);
+        // Send WS command: X,Y,R,E (R=0 for movement, E=0 unused)
+        sendWsCommand(0, 0, 0, e);
     }
     
     @Override
@@ -481,8 +482,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Si
                 break;
         }
         
-        // Send UDP command: X,Y,R,E (X=0, Y=0 for pure rotation, E=0 unused)
-        sendUdpCommand(0, 0, r, 0);
+        // Send WS command: X,Y,R,E (X=0, Y=0 for pure rotation, E=0 unused)
+        sendWsCommand(0, 0, r, 0);
     }
     
     @Override
@@ -496,8 +497,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Si
         int my = (int) (y * 255);
         int mr = (int) (r * 255);
         
-        // Send UDP command: X,Y,R,E (E=0 unused for base movement)
-        sendUdpCommand(mx, my, mr, 0);
+        // Send WS command: X,Y,R,E (E=0 unused for base movement)
+        sendWsCommand(mx, my, mr, 0);
     }
     
     @Override
@@ -507,7 +508,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Si
         lastCommand = "stop";
         
         // Send stop command: all values to 0
-        sendUdpCommand(0, 0, 0, 0);
+        sendWsCommand(0, 0, 0, 0);
     }
     
     @Override
@@ -552,70 +553,67 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Si
     }
     
     /**
-     * Initialize UDP socket for robot communication
+     * Send WebSocket command to ESP32 robot
+     * @param x X movement value (-255 to 255)
+     * @param y Y movement value (-255 to 255) 
+     * @param r Rotation value (-255 to 255)
+     * @param e Extra/Elevator value (-255 to 255)
      */
-    private void initializeUdpSocket() {
-        try {
-            if (udpSocket != null && !udpSocket.isClosed()) {
-                udpSocket.close();
-            }
-            udpSocket = new DatagramSocket();
-            Log.i("MainActivity", "UDP socket initialized for robot communication");
-        } catch (Exception e) {
-            Log.e("MainActivity", "Failed to initialize UDP socket: " + e.getMessage());
-        }
-    }
-    
-    /**
-     * Send UDP command to ESP32 robot
-     * @param x X movement value (-100 to 100)
-     * @param y Y movement value (-100 to 100) 
-     * @param r Rotation value (-100 to 100)
-     * @param e Extra value (0 or 1)
-     */
-    public void sendUdpCommand(int x, int y, int r, int e) {
-        if (udpSocket == null || udpSocket.isClosed()) {
-            Log.w("MainActivity", "UDP socket not initialized, cannot send command");
-            return;
-        }
-        
-        // Get current robot IP from SimpleHttpServer
+    public void sendWsCommand(int x, int y, int r, int e) {
         String robotIp = simpleServer != null ? simpleServer.getRobotIp() : null;
         if (robotIp == null || robotIp.isEmpty()) {
-            Log.w("MainActivity", "Robot IP not configured, cannot send UDP command");
+            Log.w("MainActivity", "Robot IP not configured, cannot send WS command");
             return;
         }
-        
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    // Format: X,Y,R,E
-                    String command = x + "," + y + "," + r + "," + e;
-                    byte[] commandBytes = command.getBytes();
-                    
-                    InetAddress robotAddress = InetAddress.getByName(robotIp);
-                    DatagramPacket packet = new DatagramPacket(
-                        commandBytes, 
-                        commandBytes.length, 
-                        robotAddress, 
-                        ROBOT_UDP_PORT
-                    );
-                    
-                    udpSocket.send(packet);
-                    Log.d("MainActivity", "Sent UDP command to " + robotIp + ":" + ROBOT_UDP_PORT + " -> " + command);
-                    
-                    // Update robot state
-                    robotX = x;
-                    robotY = y;
-                    robotR = r;
-                    robotE = e;
-                    
-                } catch (Exception e) {
-                    Log.e("MainActivity", "Failed to send UDP command: " + e.getMessage());
-                }
+
+        String command = x + "," + y + "," + r + "," + e;
+
+        // Initialize or re-initialize if IP changed
+        if (wsClient == null || !robotIp.equals(currentRobotIp)) {
+            if (wsClient != null) wsClient.close();
+            currentRobotIp = robotIp;
+            try {
+                URI uri = new URI("ws://" + robotIp + ":" + ROBOT_WS_PORT);
+                wsClient = new WebSocketClient(uri) {
+                    @Override
+                    public void onOpen(ServerHandshake handshakedata) {
+                        Log.i("MainActivity", "WebSocket connected to robot");
+                        send(command); // Send the pending command
+                    }
+                    @Override
+                    public void onMessage(String message) {}
+                    @Override
+                    public void onClose(int code, String reason, boolean remote) {
+                        Log.i("MainActivity", "WebSocket closed: " + reason);
+                    }
+                    @Override
+                    public void onError(Exception ex) {
+                        Log.e("MainActivity", "WebSocket error: " + ex.getMessage());
+                    }
+                };
+                wsClient.connect();
+            } catch (Exception ex) {
+                Log.e("MainActivity", "Failed to init WebSocket: " + ex.getMessage());
             }
-        }).start();
+            return; // Exit here, command will be sent in onOpen
+        }
+
+        // If already connected, send immediately. If closed, attempt reconnect.
+        if (wsClient.isOpen()) {
+            try {
+                wsClient.send(command);
+                Log.d("MainActivity", "Sent WS command -> " + command);
+                
+                robotX = x;
+                robotY = y;
+                robotR = r;
+                robotE = e;
+            } catch (Exception ex) {
+                Log.e("MainActivity", "Failed to send WS command: " + ex.getMessage());
+            }
+        } else if (wsClient.isClosed()) {
+            wsClient.reconnect();
+        }
     }
 
     @Override
@@ -697,10 +695,10 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Si
             simpleServer.stopServer();
         }
         
-        // Close UDP socket
-        if (udpSocket != null && !udpSocket.isClosed()) {
-            udpSocket.close();
-            Log.i("MainActivity", "UDP socket closed");
+        // Close WebSocket connection
+        if (wsClient != null && !wsClient.isClosed()) {
+            wsClient.close();
+            Log.i("MainActivity", "WebSocket connection closed");
         }
     }
 }
