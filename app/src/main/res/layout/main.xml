@@ -20,6 +20,34 @@
         android:padding="8dp"
         android:background="#f0f0f0">
 
+        <!-- Server info display -->
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="#e8e8e8"
+            android:padding="8dp"
+            android:layout_marginBottom="8dp"
+            android:layout_gravity="center_horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Server Address:"
+                android:textStyle="bold"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/serverAddressText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="http://loading..."
+                android:textSize="10sp"
+                android:textColor="#0066cc"
+                android:textStyle="bold"
+                android:layout_marginTop="4dp" />
+        </LinearLayout>
+
         <Button
             android:id="@+id/buttonSwitchCamera"
             android:layout_width="wrap_content"

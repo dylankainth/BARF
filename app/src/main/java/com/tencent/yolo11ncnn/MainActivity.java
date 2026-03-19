@@ -125,6 +125,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Si
     // Static reference used by native code to forward detections into Java
     private static SimpleHttpServer sSimpleServerStatic = null;
     private TextView serverStatusText;
+    private TextView serverAddressText;
     
     // Video streaming
     private Thread videoStreamThread;
@@ -174,6 +175,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Si
                 broadcastTestMessage("Camera switched to " + (new_facing == 0 ? "back" : "front"));
             }
         });
+
+        serverAddressText = (TextView) findViewById(R.id.serverAddressText);
 
         spinnerTask = (Spinner) findViewById(R.id.spinnerTask);
         spinnerTask.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -258,12 +261,21 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Si
             // Start video streaming
             startVideoStreaming();
             
+            // Get and display device IP address
+            String deviceIp = getDeviceIpAddress();
+            String serverUrl = "http://" + deviceIp + ":8080";
+            
             String msg = "Simple server started on port 8080";
             Log.i("MainActivity", msg);
             Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
             
             if (serverStatusText != null) {
                 serverStatusText.setText(msg);
+            }
+            
+            if (serverAddressText != null) {
+                serverAddressText.setText(serverUrl);
+                Log.i("MainActivity", "Server accessible at: " + serverUrl);
             }
             
         } catch (Exception e) {
@@ -400,6 +412,46 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Si
             simpleServer.getWebSocketServer().broadcast(message);
             Log.d("MainActivity", "Broadcast sent: " + message);
         }
+    }
+    
+    /**
+     * Get the device's local IP address connected to the network.
+     */
+    private String getDeviceIpAddress() {
+        try {
+            java.net.NetworkInterface ni = java.net.NetworkInterface.getByInetAddress(
+                    java.net.InetAddress.getLocalHost());
+            
+            if (ni != null) {
+                java.util.Enumeration<java.net.InetAddress> ias = ni.getInetAddresses();
+                while (ias.hasMoreElements()) {
+                    java.net.InetAddress ia = ias.nextElement();
+                    if (!ia.isLoopbackAddress() && ia instanceof java.net.Inet4Address) {
+                        return ia.getHostAddress();
+                    }
+                }
+            }
+            
+            // Fallback: iterate through all network interfaces
+            java.util.Enumeration<java.net.NetworkInterface> interfaces = 
+                    java.net.NetworkInterface.getNetworkInterfaces();
+            
+            while (interfaces.hasMoreElements()) {
+                java.net.NetworkInterface ni2 = interfaces.nextElement();
+                java.util.Enumeration<java.net.InetAddress> addresses = ni2.getInetAddresses();
+                
+                while (addresses.hasMoreElements()) {
+                    java.net.InetAddress addr = addresses.nextElement();
+                    if (!addr.isLoopbackAddress() && addr instanceof java.net.Inet4Address) {
+                        return addr.getHostAddress();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.e("MainActivity", "Error getting device IP: " + e.getMessage());
+        }
+        
+        return "192.168.x.x";  // Fallback if unable to get IP
     }
     
     // ========== RobotControlCallback Implementation ==========
