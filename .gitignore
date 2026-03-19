@@ -1,6 +1,7 @@
 /ultralytics-src/
 ultralytics.zip
 /My-First-Project-1/
+/Ping-Pong-Detection-1/
 *.pt
 .gradle/
 /build/
