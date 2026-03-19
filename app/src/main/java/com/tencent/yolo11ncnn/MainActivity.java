@@ -511,6 +511,16 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Si
     }
     
     @Override
+    public void setYoloEnabled(boolean enabled) {
+        yolo11ncnn.setYoloEnabled(enabled);
+    }
+
+    @Override
+    public void setAprilTagEnabled(boolean enabled) {
+        yolo11ncnn.setAprilTagEnabled(enabled);
+    }
+    
+    @Override
     public void onCameraSwitch() {
         Log.i("MainActivity", "Camera switch requested");
         int newFacing = 1 - facing;
