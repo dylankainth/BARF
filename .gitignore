@@ -47,3 +47,12 @@ app/build/intermediates/project_dex_archive/debug/dexBuilderDebug/out/com/tencen
 app/build/intermediates/project_dex_archive/debug/dexBuilderDebug/out/com/tencent/yolo11ncnn/MainActivity$2.dex
 app/build/intermediates/project_dex_archive/debug/dexBuilderDebug/out/com/tencent/yolo11ncnn/MainActivity$3.dex
 app/build/intermediates/project_dex_archive/debug/dexBuilderDebug/out/com/tencent/yolo11ncnn/MainActivity$4.dex
+app/.idea/AndroidProjectSystem.xml
+.gitignore
+app/.idea/gradle.xml
+app/.idea/migrations.xml
+app/.idea/misc.xml
+.gitignore
+app/.idea/runConfigurations.xml
+app/.idea/vcs.xml
+app/.idea/caches/deviceStreaming.xml
