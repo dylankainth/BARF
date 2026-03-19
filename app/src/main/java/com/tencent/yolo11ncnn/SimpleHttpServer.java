@@ -57,12 +57,16 @@ public class SimpleHttpServer extends NanoHTTPD {
         public boolean isMoving;
         public String lastCommand;
         public int cameraFacing; // 0 = back, 1 = front
+        public boolean yoloEnabled;
+        public boolean aprilTagEnabled;
         public long timestamp;
         
         public RobotStatus() {
             this.isMoving = false;
             this.lastCommand = "none";
             this.cameraFacing = 0;
+            this.yoloEnabled = false;
+            this.aprilTagEnabled = false;
             this.timestamp = System.currentTimeMillis();
         }
     }
@@ -304,10 +308,12 @@ public class SimpleHttpServer extends NanoHTTPD {
                     return handleCameraSwitch();
                 }
                 break;
-                
+
             case "/api/robot/status":
                 if (method == Method.GET) {
                     return handleRobotStatus();
+                } else if (method == Method.POST) {
+                    return handleRobotStatusPost(session);
                 }
                 break;
                 
@@ -555,7 +561,37 @@ public class SimpleHttpServer extends NanoHTTPD {
                     createErrorJson("Failed to switch camera: " + e.getMessage()));
         }
     }
-    
+
+    /**
+     * Handle POST /api/robot/status
+     * Body: { "yoloEnabled": true, "aprilTagEnabled": false }
+     */
+    private Response handleRobotStatusPost(IHTTPSession session) {
+        try {
+            String body = getRequestBody(session);
+            JsonObject json = JsonParser.parseString(body).getAsJsonObject();
+
+            if (robotCallback != null) {
+                if (json.has("yoloEnabled")) {
+                    boolean enabled = json.get("yoloEnabled").getAsBoolean();
+                    robotCallback.setYoloEnabled(enabled);
+                    broadcastRobotCommand("yolo", enabled ? "enabled" : "disabled", enabled ? 1 : 0);
+                }
+                if (json.has("aprilTagEnabled")) {
+                    boolean enabled = json.get("aprilTagEnabled").getAsBoolean();
+                    robotCallback.setAprilTagEnabled(enabled);
+                    broadcastRobotCommand("apriltag", enabled ? "enabled" : "disabled", enabled ? 1 : 0);
+                }
+            }
+
+            // Return updated status after applying changes
+            return handleRobotStatus();
+        } catch (Exception e) {
+            return createJsonResponse(Response.Status.BAD_REQUEST,
+                    createErrorJson("Failed to update status: " + e.getMessage()));
+        }
+    }
+
     /**
      * Handle GET /api/robot/status
      */
@@ -568,6 +604,8 @@ public class SimpleHttpServer extends NanoHTTPD {
             response.addProperty("isMoving", status.isMoving);
             response.addProperty("lastCommand", status.lastCommand);
             response.addProperty("cameraFacing", status.cameraFacing);
+            response.addProperty("yoloEnabled", status.yoloEnabled);
+            response.addProperty("aprilTagEnabled", status.aprilTagEnabled);
             response.addProperty("timestamp", status.timestamp);
             
             return createJsonResponse(Response.Status.OK, response.toString());

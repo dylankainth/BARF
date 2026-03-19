@@ -6,7 +6,7 @@ const getHttpBase = () => {
 };
 
 export default function ControlPage() {
-    const [status, setStatus] = useState<any>({ isMoving: false, lastCommand: "none", cameraFacing: 0 });
+    const [status, setStatus] = useState<any>({ isMoving: false, lastCommand: "none", cameraFacing: 0, yoloEnabled: false, aprilTagEnabled: false });
     const [speed, setSpeed] = useState(0.5);
     const [liftSpeed, setliftSpeed] = useState(0.5);
     const base = getHttpBase();
@@ -21,7 +21,14 @@ export default function ControlPage() {
         try {
             const res = await fetch(`${base}/api/robot/status`);
             const json = await res.json();
-            if (json.success) setStatus({ isMoving: json.isMoving, lastCommand: json.lastCommand, cameraFacing: json.cameraFacing });
+            if (json.success) setStatus((prev: any) => ({
+            ...prev,
+            isMoving: json.isMoving,
+            lastCommand: json.lastCommand,
+            cameraFacing: json.cameraFacing,
+            yoloEnabled: json.yoloEnabled ?? prev.yoloEnabled,
+            aprilTagEnabled: json.aprilTagEnabled ?? prev.aprilTagEnabled,
+        }));
         } catch (e) {
             // ignore
         }
@@ -40,6 +47,16 @@ export default function ControlPage() {
     const rotate = (direction: string) => post("/api/robot/rotate", { direction, speed });
     const stop = () => post("/api/robot/stop", {});
     const switchCamera = () => post("/api/robot/camera/switch", {});
+
+    const setYoloEnabled = async (enabled: boolean) => {
+        await post("/api/robot/status", { yoloEnabled: enabled });
+        fetchStatus();
+    };
+
+    const setAprilTagEnabled = async (enabled: boolean) => {
+        await post("/api/robot/status", { aprilTagEnabled: enabled });
+        fetchStatus();
+    };
 
     return (
 
@@ -101,13 +118,28 @@ export default function ControlPage() {
                         <button onClick={() => stop()} className="flex-1 btn-destructive">Emergency Stop</button>
                     </div>
 
+                    <div className="flex gap-3 w-full py-4">
+                        <button
+                            onClick={() => setYoloEnabled(!status.yoloEnabled)}
+                            className={`flex-1 ${status.yoloEnabled ? "btn" : "btn-destructive"}`}
+                        >
+                            {status.yoloEnabled ? "Disable YOLO" : "Enable YOLO"}
+                        </button>
+                        <button
+                            onClick={() => setAprilTagEnabled(!status.aprilTagEnabled)}
+                            className={`flex-1 ${status.aprilTagEnabled ? "btn" : "btn-destructive"}`}
+                        >
+                            {status.aprilTagEnabled ? "Disable AprilTag" : "Enable AprilTag"}
+                        </button>
+                    </div>
+
                 </article>
 
 
 
                 <article className="mb-4 break-inside-avoid rounded-xl border border-[#22242b] bg-[linear-gradient(160deg,#131419_0%,#0f1014_100%)] p-4 text-zinc-100 shadow-[0_16px_40px_rgba(0,0,0,0.28)]">
                     <div className="mb-3 text-sm font-semibold tracking-wide">Status</div>
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                         <div>
                             <div className="text-xs text-muted">Motion</div>
                             <div className="font-semibold">{status.isMoving ? "Moving" : "Idle"}</div>
@@ -119,6 +151,14 @@ export default function ControlPage() {
                         <div>
                             <div className="text-xs text-muted">Camera</div>
                             <div className="font-semibold">{status.cameraFacing === 0 ? "Back" : "Front"}</div>
+                        </div>
+                        <div>
+                            <div className="text-xs text-muted">YOLO</div>
+                            <div className="font-semibold">{status.yoloEnabled ? "Enabled" : "Disabled"}</div>
+                        </div>
+                        <div>
+                            <div className="text-xs text-muted">AprilTag</div>
+                            <div className="font-semibold">{status.aprilTagEnabled ? "Enabled" : "Disabled"}</div>
                         </div>
                     </div>
 

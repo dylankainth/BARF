@@ -470,4 +470,14 @@ JNIEXPORT void JNICALL Java_com_tencent_yolo11ncnn_YOLO11Ncnn_setAprilTagEnabled
     g_apriltag_enabled.store(enabled);
 }
 
+JNIEXPORT jboolean JNICALL Java_com_tencent_yolo11ncnn_YOLO11Ncnn_isYoloEnabled(JNIEnv* env, jobject thiz)
+{
+    return g_yolo_enabled.load() ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT jboolean JNICALL Java_com_tencent_yolo11ncnn_YOLO11Ncnn_isAprilTagEnabled(JNIEnv* env, jobject thiz)
+{
+    return g_apriltag_enabled.load() ? JNI_TRUE : JNI_FALSE;
+}
+
 }

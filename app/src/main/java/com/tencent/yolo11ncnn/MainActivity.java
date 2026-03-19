@@ -539,6 +539,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Si
         status.isMoving = isMoving;
         status.lastCommand = lastCommand;
         status.cameraFacing = facing;
+        status.yoloEnabled = yolo11ncnn.isYoloEnabled();
+        status.aprilTagEnabled = yolo11ncnn.isAprilTagEnabled();
         status.timestamp = System.currentTimeMillis();
         return status;
     }
