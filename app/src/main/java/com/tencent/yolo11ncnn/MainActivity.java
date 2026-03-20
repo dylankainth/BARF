@@ -405,12 +405,12 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Si
     }
     
     /**
-     * Broadcast a test message to connected WebSocket clients.
+     * Send a test message to ESP32 via WebSocket.
      */
     public void broadcastTestMessage(String message) {
-        if (simpleServer != null && simpleServer.getWebSocketServer() != null) {
-            simpleServer.getWebSocketServer().broadcast(message);
-            Log.d("MainActivity", "Broadcast sent: " + message);
+        if (simpleServer != null && simpleServer.getWebSocketClient() != null) {
+            simpleServer.getWebSocketClient().sendMessage(message);
+            Log.d("MainActivity", "Message sent to ESP32: " + message);
         }
     }
     

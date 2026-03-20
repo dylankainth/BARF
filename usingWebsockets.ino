@@ -1,13 +1,13 @@
 #include <WiFi.h>
-#include <WebSocketsServer.h> // Replaces WebServer and WiFiUdp
-#include <ArduinoJson.h>      // Still included for library compatibility, though not used directly
+#include <WebSocketsServer.h>
+#include <ArduinoJson.h>
 
 // --- Network Configuration ---
 const char *ssid = "KCL_ICE_CREAM";
 const char *password = "mryipfromreading";
 
-// --- WebSocket Configuration ---
-const unsigned int wsPort = 4210; // Standard port for robot commands
+// --- WebSocket Configuration (ESP32 SERVER) ---
+const unsigned int wsPort = 4210; // ESP32 WebSocket server port
 WebSocketsServer webSocket = WebSocketsServer(wsPort);
 
 // --- Mecanum Drive Pin Assignments (ESP32 -> IBT-2 / BTS7960) ---
@@ -48,7 +48,8 @@ bool currentButtonState = false;
 
 // --- Function Declarations ---
 void connectToWiFi();
-void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length);
+void connectToAndroidServer();
+void handleWebSocketEvent(WStype_t type, uint8_t *payload, size_t length);
 void setMotorIBT2(int rpwmPin, int lpwmPin, int speed);
 void mecanumDrive(int x, int y, int rotation);
 void controlElevator(int speed);
@@ -87,11 +88,11 @@ void setup()
   // Connect to Wi-Fi
   connectToWiFi();
 
-  // Configure WebSocket Server (Port 4210)
+  // Configure WebSocket Server on port 4210
   webSocket.begin();
   webSocket.onEvent(webSocketEvent);
-  Serial.printf("WebSocket server started on port %u.\n", wsPort);
-  Serial.println("Ready for WebSocket commands (X,Y,R,E).");
+  Serial.printf("WebSocket SERVER started on port %u.\n", wsPort);
+  Serial.println("Waiting for Android app to connect...");
 }
 
 void loop()
@@ -116,14 +117,14 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
   case WStype_CONNECTED:
   {
     IPAddress ip = webSocket.remoteIP(num);
-    Serial.printf("[%u] Connected from %d.%d.%d.%d url: %s\n", num, ip[0], ip[1], ip[2], ip[3], payload);
+    Serial.printf("[%u] Connected from %d.%d.%d.%d\n", num, ip[0], ip[1], ip[2], ip[3]);
   }
   break;
 
   case WStype_TEXT:
   {
     Serial.println("========================================");
-    Serial.printf("WS Received: %s\n", payload);
+    Serial.printf("WS Received from [%u]: %s\n", num, payload);
 
     // Protocol: X,Y,R,E (comma separated values)
     int x, y, r, e;
@@ -286,20 +287,29 @@ void controlElevator(int speed)
 
 void connectToWiFi()
 {
-  Serial.print("Connecting to ");
+  Serial.print("Connecting to WiFi: ");
   Serial.println(ssid);
   WiFi.begin(ssid, password);
 
-  while (WiFi.status() != WL_CONNECTED)
+  int attempts = 0;
+  while (WiFi.status() != WL_CONNECTED && attempts < 20)
   {
     delay(500);
     Serial.print(".");
+    attempts++;
   }
 
   Serial.println("");
-  Serial.println("WiFi connected");
-  Serial.print("IP Address: ");
-  Serial.println(WiFi.localIP());
+  if (WiFi.status() == WL_CONNECTED)
+  {
+    Serial.println("WiFi connected");
+    Serial.print("IP Address: ");
+    Serial.println(WiFi.localIP());
+  }
+  else
+  {
+    Serial.println("Failed to connect to WiFi");
+  }
 }
 
 // --- Button Handling with Debouncing ---
@@ -345,19 +355,20 @@ void handleButtonInput()
 }
 
 /**
- * @brief Broadcasts a button event to all connected WebSocket clients.
+ * @brief Sends a button event to the Android WebSocket server.
  * @param eventType "pressed" or "released"
  */
 void broadcastButtonEvent(const char *eventType)
 {
+  if (!webSocket.isConnected())
+  {
+    Serial.println("WebSocket not connected - button event NOT sent");
+    return;
+  }
+
   // Format: button:EVENT_TYPE
   String message = String("button:") + String(eventType);
 
-  // Broadcast to all connected clients
-  for (uint8_t i = 0; i < webSocket.connectedClients(); i++)
-  {
-    webSocket.sendTXT(i, (uint8_t *)message.c_str(), message.length());
-  }
-
-  Serial.printf("Broadcasted button event: %s\n", message.c_str());
+  webSocket.sendTXT((uint8_t *)message.c_str(), message.length());
+  Serial.printf("Button event sent to Android: %s\n", message.c_str());
 }

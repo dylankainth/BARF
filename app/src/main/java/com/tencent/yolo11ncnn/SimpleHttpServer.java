@@ -23,11 +23,11 @@ public class SimpleHttpServer extends NanoHTTPD {
     
     private Context context;
     private AssetManager assetManager;
-    private SimpleWebSocketServer webSocketServer;
+    private SimpleWebSocketClient webSocketClient;  // CLIENT that connects to ESP32
     private boolean isOnline = false;
     private RobotControlCallback robotCallback;
     private VideoStreamServer videoStreamServer;
-    private String robotIp = "192.168.1.100"; // Default robot IP
+    private String robotIp = "192.168.1.100"; // Robot (ESP32) IP address
     private AudioPlayer audioPlayer;
     
     // Robot IP storage
@@ -163,10 +163,10 @@ public class SimpleHttpServer extends NanoHTTPD {
     }
     
     /**
-     * Get the video stream server.
+     * Get the WebSocket CLIENT (connects to ESP32).
      */
-    public VideoStreamServer getVideoStreamServer() {
-        return videoStreamServer;
+    public SimpleWebSocketClient getWebSocketClient() {
+        return webSocketClient;
     }
     
     /**
@@ -180,33 +180,24 @@ public class SimpleHttpServer extends NanoHTTPD {
      * Start the HTTP server and WebSocket server.
      */
     public void startServer() {
+        Log.i(TAG, "[START_SERVER] startServer() called");
         try {
             start(NanoHTTPD.SOCKET_READ_TIMEOUT, false);
             isOnline = true;
-            Log.i(TAG, "HTTP Server started on port " + getListeningPort());
+            Log.i(TAG, "[HTTP_START] HTTP Server started on port " + getListeningPort());
             
-            // Start WebSocket server on port 8081
-            webSocketServer = new SimpleWebSocketServer(8081);
+            // Connect WebSocket CLIENT to ESP32 on port 4210
+            webSocketClient = new SimpleWebSocketClient(robotIp, 4210, scriptExecutor);
             
-            // Set up button event callbacks
-            if (scriptExecutor != null) {
-                webSocketServer.setButtonEventCallback(new SimpleWebSocketServer.ButtonEventCallback() {
-                    @Override
-                    public void onButtonPressed() {
-                        Log.i(TAG, "Button pressed - forwarding to script");
-                        scriptExecutor.onButtonPressed();
-                    }
-                    
-                    @Override
-                    public void onButtonReleased() {
-                        Log.i(TAG, "Button released - forwarding to script");
-                        scriptExecutor.onButtonReleased();
-                    }
-                });
-            }
-            
-            webSocketServer.start();
-            Log.i(TAG, "WebSocket Server started on port 8081");
+            Log.i(TAG, "[WEBSOCKET_CONNECT] Attempting to connect to ESP32 at " + robotIp + ":4210");
+            new Thread(() -> {
+                try {
+                    webSocketClient.connectBlocking();
+                    Log.i(TAG, "[WEBSOCKET_CONNECTED] Successfully connected to ESP32");
+                } catch (Exception e) {
+                    Log.e(TAG, "[WEBSOCKET_ERROR] Failed to connect to ESP32: " + e.getMessage(), e);
+                }
+            }).start();
             
             // Start video stream server
             if (videoStreamServer != null) {

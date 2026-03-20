@@ -186,29 +186,38 @@ public class RhinoScriptExecutor {
      * Notify the script that the button was pressed.
      */
     public void onButtonPressed() {
+        Log.d(TAG, "[BUTTON] onButtonPressed() called");
         ScriptableObject scope;
         synchronized (this) {
             scope = this.globalScope;
         }
 
         if (scope == null) {
-            Log.w(TAG, "No active script scope for button event");
+            Log.w(TAG, "[BUTTON_WARNING] No active script scope for button event");
             return;
         }
+        
+        Log.d(TAG, "[BUTTON] Scope found, calling callback...");
 
         Context cx = Context.enter();
         try {
             cx.setOptimizationLevel(-1);
 
             Object cb = ScriptableObject.getProperty(scope, "__button_onPressed");
+            Log.d(TAG, "[BUTTON] Callback object retrieved: " + (cb != null ? cb.getClass().getName() : "null"));
             if (cb instanceof Function) {
                 Function fn = (Function) cb;
                 try {
+                    Log.d(TAG, "[BUTTON] Invoking button pressed callback");
                     fn.call(cx, scope, scope, new Object[]{});
                     appendOutput("Button pressed event fired");
+                    Log.i(TAG, "[BUTTON] Button pressed callback executed successfully");
                 } catch (Exception e) {
                     appendOutput("Error calling button pressed callback: " + e.getMessage());
+                    Log.e(TAG, "[BUTTON_ERROR] Error in pressed callback: " + e.getMessage(), e);
                 }
+            } else {
+                Log.w(TAG, "[BUTTON_WARNING] No button pressed callback registered (__button_onPressed not set)");
             }
         } catch (Exception e) {
             Log.e(TAG, "Error notifying button pressed: " + e.getMessage());
@@ -221,29 +230,38 @@ public class RhinoScriptExecutor {
      * Notify the script that the button was released.
      */
     public void onButtonReleased() {
+        Log.d(TAG, "[BUTTON] onButtonReleased() called");
         ScriptableObject scope;
         synchronized (this) {
             scope = this.globalScope;
         }
 
         if (scope == null) {
-            Log.w(TAG, "No active script scope for button event");
+            Log.w(TAG, "[BUTTON_WARNING] No active script scope for button event");
             return;
         }
+        
+        Log.d(TAG, "[BUTTON] Scope found, calling callback...");
 
         Context cx = Context.enter();
         try {
             cx.setOptimizationLevel(-1);
 
             Object cb = ScriptableObject.getProperty(scope, "__button_onReleased");
+            Log.d(TAG, "[BUTTON] Callback object retrieved: " + (cb != null ? cb.getClass().getName() : "null"));
             if (cb instanceof Function) {
                 Function fn = (Function) cb;
                 try {
+                    Log.d(TAG, "[BUTTON] Invoking button released callback");
                     fn.call(cx, scope, scope, new Object[]{});
                     appendOutput("Button released event fired");
+                    Log.i(TAG, "[BUTTON] Button released callback executed successfully");
                 } catch (Exception e) {
                     appendOutput("Error calling button released callback: " + e.getMessage());
+                    Log.e(TAG, "[BUTTON_ERROR] Error in released callback: " + e.getMessage(), e);
                 }
+            } else {
+                Log.w(TAG, "[BUTTON_WARNING] No button released callback registered (__button_onReleased not set)");
             }
         } catch (Exception e) {
             Log.e(TAG, "Error notifying button released: " + e.getMessage());
