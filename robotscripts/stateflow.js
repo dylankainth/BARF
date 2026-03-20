@@ -6,11 +6,15 @@ var TARGET_CENTER_TOLERANCE = 0.1; // Margin of error to consider ball "centered
 var SIGHT_TIMEOUT_MS = 500; // How long before considering the ball "lost"
 
 // Speed Configurations
-var ROTATE_SPEED_MULTIPLIER = 0.65; // Adjust this to make the robot faster or slower overall
-var SEARCH_ROTATE_SPEED = 0.3; // Speed for blind spinning
-var TRACK_FORWARD_SPEED = 0.2; // Slowly move forward while aligning
-var APPROACH_FORWARD_SPEED = 0.4; // Speed up once the ball is centered
-var CAPTURE_FORWARD_SPEED = 0.5; // Blind drive speed for the final capture
+var ROTATE_SPEED_MULTIPLIER = 0.65; 
+var SEARCH_ROTATE_SPEED = 0.3; 
+var TRACK_FORWARD_SPEED = 0.2; 
+var APPROACH_FORWARD_SPEED = 0.4; 
+var CAPTURE_FORWARD_SPEED = 0.5; 
+
+// Network Optimization Constants
+var DRIVE_RATE_LIMIT_MS = 30; // Enforce minimum 30ms between sends
+var DRIVE_EPSILON = 0.02; // Minimum change required to trigger a new command
 
 // States
 var STATE_SEARCH_BALL = 'SEARCH_BALL';
@@ -31,6 +35,36 @@ var ki = 0.0;
 var kd = 0.4;
 var previousError = 0;
 var integral = 0;
+
+// Command Caching Variables
+var lastSentX = null;
+var lastSentY = null;
+var lastSentRot = null;
+var lastCommandTime = 0;
+
+// --- Network Optimized Drive Function ---
+function smartDrive(x, y, rot) {
+    var now = Date.now();
+    
+    // 1. Enforce strict rate limit
+    if (now - lastCommandTime < DRIVE_RATE_LIMIT_MS) {
+        return; 
+    }
+
+    // 2. Check if the change is significant enough to warrant a network packet
+    var xChanged = lastSentX === null || Math.abs(x - lastSentX) > DRIVE_EPSILON;
+    var yChanged = lastSentY === null || Math.abs(y - lastSentY) > DRIVE_EPSILON;
+    var rotChanged = lastSentRot === null || Math.abs(rot - lastSentRot) > DRIVE_EPSILON;
+
+    // 3. Send command and update cache if thresholds are met
+    if (xChanged || yChanged || rotChanged) {
+        drive(x, y, rot);
+        lastSentX = x;
+        lastSentY = y;
+        lastSentRot = rot;
+        lastCommandTime = now;
+    }
+}
 
 // Update tracking data when YOLO detects objects
 onDetection(function(dets) {
@@ -67,7 +101,6 @@ onDetection(function(dets) {
 
 // Helper function to calculate PID rotation
 function calculatePIDRotation(currentX) {
-    // If ball is at 0.8 (right), error is positive (0.3), turning robot right.
     var error = currentX - CENTER_X; 
     integral += error;
     var derivative = error - previousError;
@@ -82,6 +115,7 @@ function calculatePIDRotation(currentX) {
 // Main State Machine Loop
 stopAprilTag();
 startYolo();
+
 while (true) {
     try {
         var now = Date.now();
@@ -92,7 +126,7 @@ while (true) {
             
             case STATE_SEARCH_BALL:
                 // Action: Rotate slowly scanning for ping pong balls
-                drive(0, 0, SEARCH_ROTATE_SPEED * ROTATE_SPEED_MULTIPLIER); 
+                smartDrive(0, 0, SEARCH_ROTATE_SPEED * ROTATE_SPEED_MULTIPLIER); 
                 
                 // Transition: ball_detected
                 if (ballVisible) {
@@ -113,7 +147,7 @@ while (true) {
 
                 // Action: PID steering using ball_x while slowly driving forward
                 var rotation = calculatePIDRotation(ballX);
-                drive(0, TRACK_FORWARD_SPEED, rotation * ROTATE_SPEED_MULTIPLIER); 
+                smartDrive(0, TRACK_FORWARD_SPEED, rotation * ROTATE_SPEED_MULTIPLIER); 
 
                 // Transition: ball_centered
                 if (Math.abs(ballX - CENTER_X) < TARGET_CENTER_TOLERANCE) {
@@ -133,7 +167,7 @@ while (true) {
 
                 // Action: Drive forward faster & Continue PID correction
                 var approachRotation = calculatePIDRotation(ballX);
-                drive(0, APPROACH_FORWARD_SPEED, approachRotation * ROTATE_SPEED_MULTIPLIER); 
+                smartDrive(0, APPROACH_FORWARD_SPEED, approachRotation * ROTATE_SPEED_MULTIPLIER); 
 
                 // Optional fallback: If the ball drastically leaves the center, go back to tracking/slowing down
                 if (Math.abs(ballX - CENTER_X) > (TARGET_CENTER_TOLERANCE * 2)) {
@@ -143,7 +177,7 @@ while (true) {
 
             case STATE_CAPTURE_DRIVE:
                 // Action: Drive forward blindly to capture
-                drive(0, CAPTURE_FORWARD_SPEED, 0); 
+                smartDrive(0, CAPTURE_FORWARD_SPEED, 0); 
                 
                 // Transition: timer_done
                 if (now - captureStartTime >= 2000) {
@@ -153,10 +187,11 @@ while (true) {
                 break;
         }
 
-        wait(5); // 5ms delay to run the loop at ~200Hz, adjust as needed for performance
+        // Loop delay acts as the base clock cycle
+        // wait(35); 
         
     } catch (e) {
-        log("Script interrupted or stopped: " + e);
+        console.log("Script interrupted or stopped: " + e);
         break;
     }
 }

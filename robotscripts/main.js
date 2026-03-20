@@ -1,38 +1,67 @@
-const pingponglabel = 32
+// 10.104.125.167
+const PING_PONG_LABEL = 32;
+const CAMERA_OFFSET_MULTIPLIER = -0.25
 
 onDetection(function(dets) {
-    if (!dets) {
-        console.log("No detections");
-        return;
+    if (!dets) return;
+    var yolodets = dets.get("yolo");
+    if (!yolodets) return;
+
+    var bestBall = null;
+    var maxArea = 0;
+
+    for (var i = 0; i < Math.trunc(yolodets.size()); i++) {
+        var d = yolodets.get(i);
+        if (Math.trunc(d.get("label")) === PING_PONG_LABEL) {
+            var width = parseFloat(d.get("w"));
+            var area = d.get("w") * d.get("h");
+            if (area > maxArea) {
+                maxArea = area;
+                bestBall = { x: parseFloat(d.get("x")) + (width * CAMERA_OFFSET_MULTIPLIER) };
+            }
+        }
     }
-    const apriltags = dets.get("apriltags");
-    log(apriltags) // example: [{id=42.0, cx=0.3064, cy=0.3282, corners=[[0.1624, 0.5498], [0.4781, 0.5246], [0.4602, 0.0916], [0.1203, 0.1153]]}]
-    
-    // const yolodets = dets.get("yolo");
-    // for (var i = 0; i < Math.trunc(yolodets.size()); i++) {
-    //     var d = yolodets.get(i);
-    //     const detObj = {
-    //             label: Math.trunc(d.get("label")),
-    //             x: d.get("x"),
-    //             y: d.get("y"),
-    //             w: d.get("w"),
-    //             h: d.get("h"),
-    //             score: d.get("score")
-    //     };
-    //     if (detObj.label == pingponglabel){
-    //         console.log("DET: " + detObj.label +
-    //                     " x:" + detObj.x + " y:" + detObj.y +
-    //                     " w:" + detObj.w + " h:" + detObj.h +
-    //                     " score:" + detObj.score);
-    //     }
-    // }
+
+    if (bestBall) {
+        // Map 0.0-1.0 to -1.0 to 1.0 error range to match Python's assumed inputs
+        ballXError = (bestBall.x - 0.5) * 2.0;
+        log(bestBall.x);
+        lastSeenTime = Date.now();
+    }
 });
+// onDetection(function(dets) {
+//     if (!dets) {
+//         console.log("No detections");
+//         return;
+//     }
+//     // const apriltags = dets.get("apriltags");
+//     // log(apriltags) // example: [{id=42.0, cx=0.3064, cy=0.3282, corners=[[0.1624, 0.5498], [0.4781, 0.5246], [0.4602, 0.0916], [0.1203, 0.1153]]}]
+    
+//     const yolodets = dets.get("yolo");
+//     for (var i = 0; i < Math.trunc(yolodets.size()); i++) {
+//         var d = yolodets.get(i);
+//         const detObj = {
+//                 label: Math.trunc(d.get("label")),
+//                 x: d.get("x"),
+//                 y: d.get("y"),
+//                 w: d.get("w"),
+//                 h: d.get("h"),
+//                 score: d.get("score")
+//         };
+//         if (detObj.label == pingponglabel){
+//             console.log("DET: " + detObj.label +
+//                         " x:" + detObj.x + " y:" + detObj.y +
+//                         " w:" + detObj.w + " h:" + detObj.h +
+//                         " score:" + detObj.score);
+//         }
+//     }
+// });
 
 // Heartbeat loop to keep the script running (will exit if script is stopped)
-// stopAprilTag();
-// startYolo();
-stopYolo();
-startAprilTag();
+stopAprilTag();
+startYolo();
+// stopYolo();
+// startAprilTag();
 while (true) {
     try {
         // move(FORWARD, 0.5);
@@ -47,7 +76,7 @@ while (true) {
         // drive(sideways, forward, rotation)
         // Drive forward at 50% speed while curving right at 30% speed
         // drive(0, 0.2, 0.3);
-        // wait(500);
+        wait(500);
         // drive(0, 0.2, -0.3);
     } catch (e) {
         console.log("Script interrupted or stopped: " + e);

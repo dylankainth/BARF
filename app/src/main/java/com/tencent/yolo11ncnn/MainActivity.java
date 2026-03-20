@@ -380,7 +380,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Si
                     }
                     
                     // Reduced frame rate: ~10 FPS to prevent memory pressure
-                    Thread.sleep(100);
+                    Thread.sleep(40);
                     
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
