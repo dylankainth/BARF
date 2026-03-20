@@ -4,26 +4,26 @@
 var CONFIG = {
     VISION: {
         TARGET_LABEL: 32, // Ping pong ball
-        CAMERA_OFFSET_MULTIPLIER: 1.6,
+        CAMERA_OFFSET_MULTIPLIER: 1.5,
         SIGHT_TIMEOUT_MS: 250,
         AREA_SIMILARITY_RATIO: 0.8 // NEW: Balls within 80% of max area are considered "similar"
     },
     THRESHOLDS: {
-        MIDDLE_X_FORWARD: 0.12,
+        MIDDLE_X_FORWARD: 0.13,
         MIDDLE_X_STOP_ROTATE: 0.07
     },
     PID: {
         KP: 0.1,
         KI: 0.2,
-        I_CLAMP: 2,
+        I_CLAMP: 1.6,
         OUTPUT_CLAMP: 0.6,
         MIN_OUTPUT: 0.1 
     },
     DRIVE: {
-        FORWARD_SPEED: 0,//0.3,
-        BLIND_FORWARD_SPEED: 0,//0.2,
+        FORWARD_SPEED: 0.45,
+        BLIND_FORWARD_SPEED: 0.6,
         BLIND_FORWARD_DURATION_MS: 1700,
-        SEARCH_SPIN_SPEED: 0,//0.2,
+        SEARCH_SPIN_SPEED: 0.2,
         PAUSE_DURATION_MS: 500, // 0.5 seconds pause to verify target
         RATE_LIMIT_MS: 40,
         EPSILON: 0.01
@@ -197,8 +197,8 @@ function determineVelocities(currentTime, dt) {
 
         if (Math.abs(STATE.tracking.ballXError) < CONFIG.THRESHOLDS.MIDDLE_X_FORWARD) {
             forwardSpeed = CONFIG.DRIVE.FORWARD_SPEED;
+            STATE.tracking.lastMoveForwardTime = currentTime;
         }
-        STATE.tracking.lastMoveForwardTime = currentTime;
 
     } else {
         var blindElapsed = currentTime - STATE.tracking.lastMoveForwardTime;
@@ -233,7 +233,6 @@ while (true) {
 
         var cmd = determineVelocities(currentTime, dt);
         smartDrive(cmd.x, cmd.y, cmd.rot, currentTime);
-        
     } catch (e) {
         console.log("Script interrupted or stopped: " + e);
         break;
