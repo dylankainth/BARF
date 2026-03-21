@@ -20,14 +20,18 @@ var CONFIG = {
         MIN_OUTPUT: 0.15
     },
     DRIVE: {
-        FORWARD_SPEED_MIN: 0.25, // Changed from static FORWARD_SPEED
-        FORWARD_SPEED_MAX: 0.40, // New max speed for when perfectly centered
+        FORWARD_SPEED_MIN: 0.25, 
+        FORWARD_SPEED_MAX: 0.40, 
         BLIND_FORWARD_SPEED: 0.6,
         BLIND_FORWARD_DURATION_MS: 1700,
-        SEARCH_SPIN_SPEED: 0.25,
+        SEARCH_SPIN_SPEED: 0.3,
         PAUSE_DURATION_MS: 250,
         RATE_LIMIT_MS: 40,
-        EPSILON: 0.01
+        EPSILON: 0.01,
+        
+        // --- NEW: Search Step-and-Stop Timings ---
+        STEP_TIME_MS: 150,       
+        PAUSE_TIME_MS: 300       
     }
 };
 
@@ -52,6 +56,11 @@ var STATE = {
         lastSentY: null,
         lastSentRot: null,
         lastCommandTime: 0
+    },
+    // --- NEW: Search Phase State ---
+    searchPhase: {
+        phase: 'PAUSED', 
+        phaseStartTime: 0
     }
 };
 
@@ -172,7 +181,10 @@ function determineVelocities(currentTime, dt) {
             if (!isTargetValid) {
                 STATE.tracking.mode = 'SPINNING';
                 STATE.tracking.lastMoveForwardTime = currentTime - CONFIG.DRIVE.BLIND_FORWARD_DURATION_MS;
-                return { x: 0.0, y: 0.0, rot: CONFIG.DRIVE.SEARCH_SPIN_SPEED };
+                // Initialize the search phase when entering SPINNING mode
+                STATE.searchPhase.phase = 'PAUSED';
+                STATE.searchPhase.phaseStartTime = currentTime;
+                return { x: 0.0, y: 0.0, rot: 0.0 };
             }
             STATE.tracking.mode = 'TRACKING';
         }
@@ -213,8 +225,31 @@ function determineVelocities(currentTime, dt) {
             STATE.tracking.mode = 'BLIND_FORWARD';
             forwardSpeed = CONFIG.DRIVE.BLIND_FORWARD_SPEED;
         } else {
-            STATE.tracking.mode = 'SPINNING';
-            rotation = CONFIG.DRIVE.SEARCH_SPIN_SPEED;
+            // --- NEW: Step-and-Stop Spinning Logic ---
+            if (STATE.tracking.mode !== 'SPINNING') {
+                // Failsafe initialization if entering from tracking directly
+                STATE.tracking.mode = 'SPINNING';
+                STATE.searchPhase.phase = 'PAUSED';
+                STATE.searchPhase.phaseStartTime = currentTime;
+            }
+
+            var timeInPhase = currentTime - STATE.searchPhase.phaseStartTime;
+            
+            if (STATE.searchPhase.phase === 'PAUSED') {
+                if (timeInPhase > CONFIG.DRIVE.PAUSE_TIME_MS) {
+                    STATE.searchPhase.phase = 'MOVING';
+                    STATE.searchPhase.phaseStartTime = currentTime;
+                }
+                rotation = 0.0; // Stop and look
+            } else {
+                if (timeInPhase > CONFIG.DRIVE.STEP_TIME_MS) {
+                    STATE.searchPhase.phase = 'PAUSED';
+                    STATE.searchPhase.phaseStartTime = currentTime;
+                    rotation = 0.0; // Ready to pause again
+                } else {
+                    rotation = CONFIG.DRIVE.SEARCH_SPIN_SPEED; // Spin
+                }
+            }
         }
     }
 
