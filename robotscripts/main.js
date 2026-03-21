@@ -1,7 +1,7 @@
 // 10.104.125.167
 // 10.25.228.167
 const PING_PONG_LABEL = 32;
-const CAMERA_OFFSET_MULTIPLIER = -0.25
+const CAMERA_OFFSET_MULTIPLIER = 1.1
 
 onDetection(function(dets) {
     if (!dets) return;
@@ -18,7 +18,7 @@ onDetection(function(dets) {
             var area = d.get("w") * d.get("h");
             if (area > maxArea) {
                 maxArea = area;
-                bestBall = { x: parseFloat(d.get("x")) + (width * CAMERA_OFFSET_MULTIPLIER) };
+                bestBall = { x: parseFloat(d.get("x")) + (width * 0.5) + (width * CAMERA_OFFSET_MULTIPLIER) };
             }
         }
     }

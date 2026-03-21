@@ -4,13 +4,13 @@
 var CONFIG = {
     VISION: {
         TARGET_LABEL: 32, // Ping pong ball
-        CAMERA_OFFSET_MULTIPLIER: 1,//1.5,
+        CAMERA_OFFSET_MULTIPLIER: 1.1,
         SIGHT_TIMEOUT_MS: 120,
-        AREA_SIMILARITY_RATIO: 0.8 // NEW: Balls within 80% of max area are considered "similar"
+        AREA_SIMILARITY_RATIO: 0.8
     },
     THRESHOLDS: {
-        MIDDLE_X_FORWARD: 0.6,
-        BLIND_FORWARD_MIDDLE_X: 0.3 // NEW: Ball must be within this X error to trigger blind forward when lost
+        MIDDLE_X_FORWARD: 0.5,
+        BLIND_FORWARD_MIDDLE_X: 0.2
     },
     PID: {
         KP: 0.1,
@@ -20,11 +20,12 @@ var CONFIG = {
         MIN_OUTPUT: 0.15
     },
     DRIVE: {
-        FORWARD_SPEED: 0.25,
+        FORWARD_SPEED_MIN: 0.25, // Changed from static FORWARD_SPEED
+        FORWARD_SPEED_MAX: 0.40, // New max speed for when perfectly centered
         BLIND_FORWARD_SPEED: 0.6,
         BLIND_FORWARD_DURATION_MS: 1700,
         SEARCH_SPIN_SPEED: 0.25,
-        PAUSE_DURATION_MS: 500, // 0.5 seconds pause to verify target
+        PAUSE_DURATION_MS: 250,
         RATE_LIMIT_MS: 40,
         EPSILON: 0.01
     }
@@ -35,7 +36,7 @@ var CONFIG = {
 // ==========================================
 var STATE = {
     tracking: {
-        mode: 'TRACKING', // 'TRACKING', 'BLIND_FORWARD', 'SPINNING', or 'VERIFYING'
+        mode: 'TRACKING',
         pauseStartTime: 0,
         ballXError: 0.0,
         lastSeenTime: 0,
@@ -73,7 +74,7 @@ function smartDrive(x, y, rot, currentTime) {
     var rotChanged = hw.lastSentRot === null || Math.abs(rot - hw.lastSentRot) > CONFIG.DRIVE.EPSILON;
 
     if (xChanged || yChanged || rotChanged) {
-        // log(STATE.tracking.mode);
+        log("mode: "+STATE.tracking.mode);
         log("x: "+ STATE.tracking.ballXError);
         log("I:"+STATE.pid.integral);
         drive(x, y, rot); 
@@ -92,7 +93,6 @@ function getLargestTarget(yoloDetections) {
     var validBalls = [];
     var maxArea = 0;
 
-    // Pass 1: Collect all valid balls and find the maximum area
     for (var i = 0; i < numDetections; i++) {
         var det = yoloDetections.get(i);
         if (Math.trunc(det.get("label")) === CONFIG.VISION.TARGET_LABEL) {
@@ -109,7 +109,6 @@ function getLargestTarget(yoloDetections) {
 
     if (validBalls.length === 0) return null;
 
-    // Pass 2: Find the most centered ball among those with a similar area
     var bestBall = null;
     var minCenterDist = Infinity;
     var areaThreshold = maxArea * CONFIG.VISION.AREA_SIMILARITY_RATIO;
@@ -117,11 +116,8 @@ function getLargestTarget(yoloDetections) {
     for (var j = 0; j < validBalls.length; j++) {
         var ball = validBalls[j];
         
-        // Only consider balls that are at least 'AREA_SIMILARITY_RATIO' the size of the biggest one
         if (ball.area >= areaThreshold) {
-            // Calculate distance from the center (0.5)
             var centerDist = Math.abs(ball.x - 0.5);
-            
             if (centerDist < minCenterDist) {
                 minCenterDist = centerDist;
                 bestBall = ball;
@@ -148,7 +144,6 @@ function calculateRotation(dt, isTargetValid) {
         return 0.0;
     }
     
-    // Check for zero-crossing to reset integral
     if (STATE.tracking.ballXError * STATE.pid.lastError < 0) {
         STATE.pid.integral = 0.0;
     }
@@ -159,8 +154,6 @@ function calculateRotation(dt, isTargetValid) {
     }
     
     var rawRotation = (STATE.tracking.ballXError * CONFIG.PID.KP) + (STATE.pid.integral * CONFIG.PID.KI);
-    
-    // Update lastError for the next loop
     STATE.pid.lastError = STATE.tracking.ballXError;
     
     return clamp(rawRotation, -CONFIG.PID.OUTPUT_CLAMP, CONFIG.PID.OUTPUT_CLAMP);
@@ -172,7 +165,6 @@ function calculateRotation(dt, isTargetValid) {
 function determineVelocities(currentTime, dt) {
     var isTargetValid = (currentTime - STATE.tracking.lastSeenTime) < CONFIG.VISION.SIGHT_TIMEOUT_MS;
     
-    // 1. Handle "Pause and Verify" state
     if (STATE.tracking.mode === 'VERIFYING') {
         if (currentTime - STATE.tracking.pauseStartTime < CONFIG.DRIVE.PAUSE_DURATION_MS) {
             return { x: 0.0, y: 0.0, rot: 0.0 };
@@ -186,7 +178,6 @@ function determineVelocities(currentTime, dt) {
         }
     }
 
-    // 2. Trigger "Pause and Verify" if we just found something while spinning
     if (STATE.tracking.mode === 'SPINNING' && isTargetValid) {
         STATE.tracking.mode = 'VERIFYING';
         STATE.tracking.pauseStartTime = currentTime;
@@ -194,7 +185,6 @@ function determineVelocities(currentTime, dt) {
         return { x: 0.0, y: 0.0, rot: 0.0 }; 
     }
 
-    // 3. Normal Movement Logic
     var rotation = 0.0;
     var forwardSpeed = 0.0;
 
@@ -202,15 +192,22 @@ function determineVelocities(currentTime, dt) {
         STATE.tracking.mode = 'TRACKING';
         rotation = calculateRotation(dt, true);
 
-        if (Math.abs(STATE.tracking.ballXError) < CONFIG.THRESHOLDS.MIDDLE_X_FORWARD) {
-            forwardSpeed = CONFIG.DRIVE.FORWARD_SPEED;
+        var absXError = Math.abs(STATE.tracking.ballXError);
+        
+        if (absXError < CONFIG.THRESHOLDS.MIDDLE_X_FORWARD) {
+            // Calculate how centered the ball is (1.0 = perfect center, 0.0 = edge of threshold)
+            var centeringAccuracy = 1.0 - (absXError / CONFIG.THRESHOLDS.MIDDLE_X_FORWARD);
+            
+            // Map the accuracy smoothly between min and max speed
+            forwardSpeed = CONFIG.DRIVE.FORWARD_SPEED_MIN + 
+                           (centeringAccuracy * (CONFIG.DRIVE.FORWARD_SPEED_MAX - CONFIG.DRIVE.FORWARD_SPEED_MIN));
+                           
             STATE.tracking.lastMoveForwardTime = currentTime;
         }
 
     } else {
         var blindElapsed = currentTime - STATE.tracking.lastMoveForwardTime;
         
-        // NEW: Only trigger blind forward if elapsed time is met AND the ball was centered when lost
         if (blindElapsed < CONFIG.DRIVE.BLIND_FORWARD_DURATION_MS && 
             Math.abs(STATE.tracking.ballXError) < CONFIG.THRESHOLDS.BLIND_FORWARD_MIDDLE_X) {
             STATE.tracking.mode = 'BLIND_FORWARD';
@@ -242,7 +239,6 @@ while (true) {
 
         var cmd = determineVelocities(currentTime, dt);
         smartDrive(cmd.x, cmd.y, cmd.rot, currentTime);
-        wait(5);
     } catch (e) {
         console.log("Script interrupted or stopped: " + e);
         break;
