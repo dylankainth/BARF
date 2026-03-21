@@ -20,6 +20,7 @@ import org.mozilla.javascript.Scriptable;
 
 public class RhinoScriptExecutor {
     private static final String TAG = "RhinoScriptExecutor";
+    private static final int MAX_OUTPUT_CHARS = 32768;
     
     private final RobotApi robotApi;
     private final AudioApi audioApi;
@@ -42,7 +43,7 @@ public class RhinoScriptExecutor {
         void onRotate(String direction, float speed);
         void onLift(String direction, float speed);
         void onDrive(float x, float y, float r);
-        void onStop();
+        void onRobotStop();
         void setYoloEnabled(boolean enabled);
         void setAprilTagEnabled(boolean enabled);
     }
@@ -291,7 +292,15 @@ public class RhinoScriptExecutor {
      */
     private void appendOutput(String message) {
         String timestamp = new SimpleDateFormat("HH:mm:ss", Locale.US).format(new Date());
-        output.append("[").append(timestamp).append("] ").append(message).append("\n");
+        synchronized (output) {
+            output.append("[").append(timestamp).append("] ").append(message).append("\n");
+            if (output.length() > MAX_OUTPUT_CHARS) {
+                int trimTo = output.length() - MAX_OUTPUT_CHARS;
+                int firstNewlineAfterTrim = output.indexOf("\n", trimTo);
+                int deleteEnd = firstNewlineAfterTrim >= 0 ? firstNewlineAfterTrim + 1 : trimTo;
+                output.delete(0, deleteEnd);
+            }
+        }
         Log.d(TAG, message);
     }
     
@@ -372,7 +381,7 @@ public class RhinoScriptExecutor {
             setYoloEnabled(false);
             setAprilTagEnabled(false);
             if (callback != null) {
-                callback.onStop();
+                callback.onRobotStop();
             }
         }
         

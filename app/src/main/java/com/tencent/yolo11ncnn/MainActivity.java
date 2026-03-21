@@ -330,15 +330,13 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Si
                                     android.os.Handler mainHandler = new android.os.Handler(android.os.Looper.getMainLooper());
                                     
                                     PixelCopy.request(cameraView, frameBitmap, copyResult -> {
+                                        Bitmap rotatedBitmap = null;
                                         try {
                                             if (copyResult == PixelCopy.SUCCESS) {
                                                 // Fix orientation if needed
-                                                Bitmap rotatedBitmap = fixBitmapOrientation(frameBitmap);
+                                                rotatedBitmap = fixBitmapOrientation(frameBitmap);
                                                 if (simpleServer != null) {
                                                     simpleServer.getVideoStreamServer().submitFrame(rotatedBitmap);
-                                                }
-                                                if (rotatedBitmap != frameBitmap) {
-                                                    frameBitmap.recycle();
                                                 }
                                             } else {
                                                 Log.w("MainActivity", "PixelCopy failed with code: " + copyResult);
@@ -346,6 +344,12 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Si
                                         } catch (Exception e) {
                                             Log.e("MainActivity", "Error submitting frame: " + e.getMessage());
                                         } finally {
+                                            if (rotatedBitmap != null && !rotatedBitmap.isRecycled()) {
+                                                rotatedBitmap.recycle();
+                                            }
+                                            if (rotatedBitmap != frameBitmap && !frameBitmap.isRecycled()) {
+                                                frameBitmap.recycle();
+                                            }
                                             pendingCopies.decrementAndGet();
                                         }
                                     }, mainHandler);
@@ -552,7 +556,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Si
     }
     
     @Override
-    public void onStop() {
+    public void onRobotStop() {
         Log.i("MainActivity", "Robot stop");
         isMoving = false;
         lastCommand = "stop";

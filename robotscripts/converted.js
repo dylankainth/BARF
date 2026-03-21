@@ -4,26 +4,26 @@
 var CONFIG = {
     VISION: {
         TARGET_LABEL: 32, // Ping pong ball
-        CAMERA_OFFSET_MULTIPLIER: 1.5,
-        SIGHT_TIMEOUT_MS: 250,
+        CAMERA_OFFSET_MULTIPLIER: 1,//1.5,
+        SIGHT_TIMEOUT_MS: 120,
         AREA_SIMILARITY_RATIO: 0.8 // NEW: Balls within 80% of max area are considered "similar"
     },
     THRESHOLDS: {
-        MIDDLE_X_FORWARD: 0.13,
-        MIDDLE_X_STOP_ROTATE: 0.07
+        MIDDLE_X_FORWARD: 0.6,
+        BLIND_FORWARD_MIDDLE_X: 0.3 // NEW: Ball must be within this X error to trigger blind forward when lost
     },
     PID: {
         KP: 0.1,
-        KI: 0.2,
-        I_CLAMP: 1.6,
+        KI: 0.1,
+        I_CLAMP: 1.4,
         OUTPUT_CLAMP: 0.6,
-        MIN_OUTPUT: 0.1 
+        MIN_OUTPUT: 0.15
     },
     DRIVE: {
-        FORWARD_SPEED: 0.45,
+        FORWARD_SPEED: 0.25,
         BLIND_FORWARD_SPEED: 0.6,
         BLIND_FORWARD_DURATION_MS: 1700,
-        SEARCH_SPIN_SPEED: 0.2,
+        SEARCH_SPIN_SPEED: 0.25,
         PAUSE_DURATION_MS: 500, // 0.5 seconds pause to verify target
         RATE_LIMIT_MS: 40,
         EPSILON: 0.01
@@ -43,7 +43,8 @@ var STATE = {
     },
     pid: {
         integral: 0.0,
-        lastTime: Date.now()
+        lastTime: Date.now(),
+        lastError: 0.0
     },
     hardware: {
         lastSentX: null,
@@ -98,7 +99,6 @@ function getLargestTarget(yoloDetections) {
             var width = parseFloat(det.get("w"));
             var area = width * det.get("h");
             var x = parseFloat(det.get("x")) + (width * 0.5) + (width * CONFIG.VISION.CAMERA_OFFSET_MULTIPLIER);
-            // var x = parseFloat(det.get("x"));
             
             validBalls.push({ x: x, area: area });
             if (area > maxArea) {
@@ -142,15 +142,27 @@ onDetection(function(dets) {
 });
 
 function calculateRotation(dt, isTargetValid) {
-    if (!isTargetValid || Math.abs(STATE.tracking.ballXError) < CONFIG.THRESHOLDS.MIDDLE_X_STOP_ROTATE) {
+    if (!isTargetValid) {
         STATE.pid.integral = 0.0;
+        STATE.pid.lastError = 0.0;
         return 0.0;
     }
+    
+    // Check for zero-crossing to reset integral
+    if (STATE.tracking.ballXError * STATE.pid.lastError < 0) {
+        STATE.pid.integral = 0.0;
+    }
+    
     if (dt > 0) {
         STATE.pid.integral += STATE.tracking.ballXError * dt;
         STATE.pid.integral = clamp(STATE.pid.integral, -CONFIG.PID.I_CLAMP, CONFIG.PID.I_CLAMP);
     }
+    
     var rawRotation = (STATE.tracking.ballXError * CONFIG.PID.KP) + (STATE.pid.integral * CONFIG.PID.KI);
+    
+    // Update lastError for the next loop
+    STATE.pid.lastError = STATE.tracking.ballXError;
+    
     return clamp(rawRotation, -CONFIG.PID.OUTPUT_CLAMP, CONFIG.PID.OUTPUT_CLAMP);
 }
 
@@ -163,18 +175,13 @@ function determineVelocities(currentTime, dt) {
     // 1. Handle "Pause and Verify" state
     if (STATE.tracking.mode === 'VERIFYING') {
         if (currentTime - STATE.tracking.pauseStartTime < CONFIG.DRIVE.PAUSE_DURATION_MS) {
-            // Still pausing: Freeze all motors
             return { x: 0.0, y: 0.0, rot: 0.0 };
         } else {
-            // Pause is over: Did the target stick around?
             if (!isTargetValid) {
-                // False alarm! Resume spinning immediately. 
                 STATE.tracking.mode = 'SPINNING';
-                // Artificially push back the blind forward timer so we don't accidentally drive blind again
                 STATE.tracking.lastMoveForwardTime = currentTime - CONFIG.DRIVE.BLIND_FORWARD_DURATION_MS;
                 return { x: 0.0, y: 0.0, rot: CONFIG.DRIVE.SEARCH_SPIN_SPEED };
             }
-            // If valid, it falls through to TRACKING below.
             STATE.tracking.mode = 'TRACKING';
         }
     }
@@ -183,8 +190,8 @@ function determineVelocities(currentTime, dt) {
     if (STATE.tracking.mode === 'SPINNING' && isTargetValid) {
         STATE.tracking.mode = 'VERIFYING';
         STATE.tracking.pauseStartTime = currentTime;
-        STATE.pid.integral = 0.0; // Reset PID for a clean slate
-        return { x: 0.0, y: 0.0, rot: 0.0 }; // Stop motors immediately
+        STATE.pid.integral = 0.0; 
+        return { x: 0.0, y: 0.0, rot: 0.0 }; 
     }
 
     // 3. Normal Movement Logic
@@ -203,7 +210,9 @@ function determineVelocities(currentTime, dt) {
     } else {
         var blindElapsed = currentTime - STATE.tracking.lastMoveForwardTime;
         
-        if (blindElapsed < CONFIG.DRIVE.BLIND_FORWARD_DURATION_MS) {
+        // NEW: Only trigger blind forward if elapsed time is met AND the ball was centered when lost
+        if (blindElapsed < CONFIG.DRIVE.BLIND_FORWARD_DURATION_MS && 
+            Math.abs(STATE.tracking.ballXError) < CONFIG.THRESHOLDS.BLIND_FORWARD_MIDDLE_X) {
             STATE.tracking.mode = 'BLIND_FORWARD';
             forwardSpeed = CONFIG.DRIVE.BLIND_FORWARD_SPEED;
         } else {
@@ -233,6 +242,7 @@ while (true) {
 
         var cmd = determineVelocities(currentTime, dt);
         smartDrive(cmd.x, cmd.y, cmd.rot, currentTime);
+        wait(5);
     } catch (e) {
         console.log("Script interrupted or stopped: " + e);
         break;

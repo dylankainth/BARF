@@ -49,7 +49,7 @@ public class SimpleHttpServer extends NanoHTTPD {
         void onLift(String direction, float speed);
         void onRotate(String direction, float speed);
         void onDrive(float x, float y, float r);
-        void onStop();
+        void onRobotStop();
         void onCameraSwitch();
         void setYoloEnabled(boolean enabled);
         void setAprilTagEnabled(boolean enabled);
@@ -140,9 +140,9 @@ public class SimpleHttpServer extends NanoHTTPD {
             }
             
             @Override
-            public void onStop() {
+            public void onRobotStop() {
                 if (robotCallback != null) {
-                    robotCallback.onStop();
+                    robotCallback.onRobotStop();
                 }
             }
 
@@ -559,7 +559,7 @@ public class SimpleHttpServer extends NanoHTTPD {
     private Response handleRobotStop() {
         try {
             if (robotCallback != null) {
-                robotCallback.onStop();
+                robotCallback.onRobotStop();
                 broadcastRobotCommand("stop", "", 0);
             }
             
