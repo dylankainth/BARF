@@ -442,7 +442,7 @@ public class RhinoScriptExecutor {
         // Use 'sleep' to avoid colliding with Object.wait()
         public void sleep(int ms) throws InterruptedException {
             checkRunning();
-            appendOutput("wait(" + ms + "ms)");
+            // appendOutput("wait(" + ms + "ms)");
 
             // Break the wait into smaller chunks so we can check if stopped
             int remaining = ms;

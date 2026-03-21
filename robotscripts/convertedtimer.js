@@ -20,8 +20,8 @@ var CONFIG = {
         MIN_OUTPUT: 0.15
     },
     DRIVE: {
-        FORWARD_SPEED_MIN: 0.25,
-        FORWARD_SPEED_MAX: 0.40,
+        FORWARD_SPEED_MIN: 0.3,
+        FORWARD_SPEED_MAX: 0.60,
         BLIND_FORWARD_SPEED: 0.6,
         BLIND_FORWARD_DURATION_MS: 1700,
         SEARCH_SPIN_SPEED: 0.3,
@@ -288,7 +288,7 @@ onButton(function (state) {
 
 stopAprilTag();
 startYolo();
-playAudio('fardinho');
+// playAudio('fardinho');
 
 // Wait for button press before starting main control loop
 log("Waiting for button press to start tracking...");
