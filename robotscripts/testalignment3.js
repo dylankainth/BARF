@@ -3,7 +3,7 @@
 // ==========================================
 var CONFIG = {
     VISION: {
-        TARGET_APRILTAG_ID: 20, 
+        TARGET_APRILTAG_IDs: [20,21], 
         CAMERA_OFFSET_MULTIPLIER: 1.1,
         SIGHT_TIMEOUT_MS: 3000   // TIP: Lower this if you want it to reverse faster after losing the tag
     },
@@ -31,11 +31,16 @@ var CONFIG = {
         // Tag Found Timing
         INITIAL_PAUSE_MS: 1500,
         
-        // --- NEW: Reverse Timings & Speeds ---
-        REVERSE_SPEED: -0.3,          // Speed to drive backwards (negative Y)
-        REVERSE_STEP_MS: 400,         // How long to drive backwards per interval
-        REVERSE_PAUSE_MS: 600,        // How long to pause and look per interval
-        MAX_REVERSE_TIME_MS: 6000     // Give up and search again after 6 seconds of reversing
+        // Initial Reverse Timings & Speeds 
+        REVERSE_SPEED: -0.3,          
+        REVERSE_STEP_MS: 400,         
+        REVERSE_PAUSE_MS: 600,        
+        MAX_REVERSE_TIME_MS: 6000,    // Give up searching and spin if it never sees the tag
+
+        // --- Sequence: Turn 180 & Parking Reverse ---
+        TURN_180_SPEED: 0.4,          
+        TURN_180_TOLERANCE: 0.15,     // Radians of tolerance for hitting the 180 mark
+        PARKING_TIME_MS: 4000         // How long to do the final reverse before stopping entirely
     }
 };
 
@@ -43,7 +48,7 @@ var CONFIG = {
 // RUNTIME STATE
 // ==========================================
 var STATE = {
-    mode: 'SEARCHING', // SEARCHING, INITIAL_PAUSE, APPROACHING, REVERSING, STOPPED
+    mode: 'SEARCHING', // SEARCHING, INITIAL_PAUSE, APPROACHING, REVERSING, TURNING_180, REVERSING_AGAIN, STOPPED
     tracking: {
         lastSeenTime: 0,
         firstSeenTime: 0,
@@ -68,6 +73,14 @@ var STATE = {
         phase: 'PAUSED', 
         phaseStartTime: 0,
         totalStartTime: 0
+    },
+    turnPhase: {
+        targetYaw: 0
+    },
+    reverseAgainPhase: {
+        phase: 'PAUSED',
+        phaseStartTime: 0,
+        totalStartTime: 0
     }
 };
 
@@ -76,6 +89,30 @@ var STATE = {
 // ==========================================
 function clamp(value, min, max) {
     return value < min ? min : value > max ? max : value;
+}
+
+// Calculates the shortest angular distance between two angles (in radians)
+function angleDiff(a, b) {
+    var diff = a - b;
+    while (diff > Math.PI) diff -= 2 * Math.PI;
+    while (diff < -Math.PI) diff += 2 * Math.PI;
+    return diff;
+}
+
+// Fetches the quaternion and converts it to a Yaw (heading) in radians
+function getYaw() {
+    var raw = getQuaternion();
+    if (!raw || raw.length < 4) return 0.0;
+    
+    var q = {
+        w: raw[0],
+        x: raw[1],
+        y: raw[2],
+        z: raw[3]
+    };
+    
+    // Standard conversion from quaternion to Euler Z (Yaw)
+    return Math.atan2(2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z));
 }
 
 // ==========================================
@@ -108,8 +145,8 @@ onDetection(function(dets) {
     if (apriltags) {
         for (var j = 0; j < apriltags.size(); j++) {
             var tag = apriltags.get(j);
-            
-            if (Math.trunc(tag.get("id")) === CONFIG.VISION.TARGET_APRILTAG_ID) {
+            var id = Math.trunc(tag.get("id"));
+            if (id === CONFIG.VISION.TARGET_APRILTAG_IDs[0] || id === CONFIG.VISION.TARGET_APRILTAG_IDs[1]) {
                 STATE.tracking.lastSeenTime = Date.now();
                 
                 var cx = parseFloat(tag.get("cx")); 
@@ -156,9 +193,30 @@ function determineVelocities(currentTime, dt) {
     var isVisible = timeSinceSeen < CONFIG.VISION.SIGHT_TIMEOUT_MS;
 
     // --- 1. STATE TRANSITIONS ---
-    if (!isVisible) {
+    
+    // A. Uninterruptible Sequence States (Turn -> Park -> Stop)
+    if (STATE.mode === 'TURNING_180') {
+        var currentYaw = getYaw();
+        var diff = Math.abs(angleDiff(currentYaw, STATE.turnPhase.targetYaw));
+        
+        if (diff < CONFIG.DRIVE.TURN_180_TOLERANCE) {
+            STATE.mode = 'REVERSING_AGAIN';
+            STATE.reverseAgainPhase.totalStartTime = currentTime;
+            STATE.reverseAgainPhase.phase = 'PAUSED';
+            STATE.reverseAgainPhase.phaseStartTime = currentTime;
+            console.log("180 turn complete. Starting final parking reverse...");
+        }
+    }
+    else if (STATE.mode === 'REVERSING_AGAIN') {
+        if (currentTime - STATE.reverseAgainPhase.totalStartTime > CONFIG.DRIVE.PARKING_TIME_MS) {
+            STATE.mode = 'STOPPED';
+            console.log("Parking reverse complete. Robot successfully PARKED.");
+        }
+    }
+    
+    // B. Normal Vision-Based States
+    else if (!isVisible) {
         if (STATE.mode === 'APPROACHING') {
-            // Lost tag while approaching -> Start reversing
             STATE.mode = 'REVERSING';
             STATE.reversePhase.totalStartTime = currentTime;
             STATE.reversePhase.phase = 'PAUSED';
@@ -166,22 +224,22 @@ function determineVelocities(currentTime, dt) {
             console.log("Lost tag during approach. Reversing to reacquire...");
         } 
         else if (STATE.mode === 'REVERSING') {
-            // Check if we've been reversing for too long
+            // Failsafe: If we never see the tag while reversing, go back to searching
             if (currentTime - STATE.reversePhase.totalStartTime > CONFIG.DRIVE.MAX_REVERSE_TIME_MS) {
                 STATE.mode = 'SEARCHING';
                 STATE.searchPhase.phase = 'PAUSED';
                 STATE.searchPhase.phaseStartTime = currentTime;
-                console.log("Reverse timeout reached. Resuming search...");
+                console.log("Reverse timeout reached without spotting tag. Resuming search...");
             }
         } 
-        else if (STATE.mode !== 'SEARCHING' && STATE.mode !== 'REVERSING') {
-            // Failsafe: if we were stopped or pausing and lost it entirely
+        else if (STATE.mode !== 'SEARCHING' && STATE.mode !== 'STOPPED') {
             STATE.mode = 'SEARCHING';
             STATE.searchPhase.phase = 'PAUSED';
             STATE.searchPhase.phaseStartTime = currentTime;
             console.log("Tag lost. Searching...");
         }
-    } else {
+    } 
+    else {
         // Tag IS visible
         if (STATE.mode === 'SEARCHING') {
             STATE.mode = 'INITIAL_PAUSE';
@@ -190,9 +248,16 @@ function determineVelocities(currentTime, dt) {
             console.log("Tag found! Pausing...");
         } 
         else if (STATE.mode === 'REVERSING') {
-            // Successfully reacquired tag while reversing
-            STATE.mode = 'STOPPED';
-            console.log("Tag reacquired! Stopping.");
+            // TRIGGER SEQUENCE: We saw the tag while reversing!
+            STATE.mode = 'TURNING_180';
+            var currentYaw = getYaw();
+            STATE.turnPhase.targetYaw = currentYaw + Math.PI; // Target is exactly opposite heading
+            
+            // Keep targetYaw bounded between -PI and PI
+            while (STATE.turnPhase.targetYaw > Math.PI) STATE.turnPhase.targetYaw -= 2 * Math.PI;
+            while (STATE.turnPhase.targetYaw < -Math.PI) STATE.turnPhase.targetYaw += 2 * Math.PI;
+            
+            console.log("Tag spotted during reverse! Commencing 180 turn and park sequence...");
         } 
         else if (STATE.mode === 'INITIAL_PAUSE' && (currentTime - STATE.tracking.firstSeenTime > CONFIG.DRIVE.INITIAL_PAUSE_MS)) {
             STATE.mode = 'APPROACHING';
@@ -220,7 +285,6 @@ function determineVelocities(currentTime, dt) {
         }
     } 
     else if (STATE.mode === 'INITIAL_PAUSE' || STATE.mode === 'STOPPED') {
-        // Hold still
         return { x: 0.0, y: 0.0, rot: 0.0 };
     } 
     else if (STATE.mode === 'APPROACHING') {
@@ -255,7 +319,29 @@ function determineVelocities(currentTime, dt) {
                 STATE.reversePhase.phaseStartTime = currentTime;
                 return { x: 0.0, y: 0.0, rot: 0.0 };
             }
-            // Drive straight backwards
+            return { x: 0.0, y: CONFIG.DRIVE.REVERSE_SPEED, rot: 0.0 };
+        }
+    }
+    else if (STATE.mode === 'TURNING_180') {
+        // Spin in place to hit the target Yaw
+        return { x: 0.0, y: 0.0, rot: CONFIG.DRIVE.TURN_180_SPEED };
+    }
+    else if (STATE.mode === 'REVERSING_AGAIN') {
+        // Step-and-pause backwards for the final parking maneuver
+        var timeInReverseAgainPhase = currentTime - STATE.reverseAgainPhase.phaseStartTime;
+        
+        if (STATE.reverseAgainPhase.phase === 'PAUSED') {
+            if (timeInReverseAgainPhase > CONFIG.DRIVE.REVERSE_PAUSE_MS) {
+                STATE.reverseAgainPhase.phase = 'MOVING';
+                STATE.reverseAgainPhase.phaseStartTime = currentTime;
+            }
+            return { x: 0.0, y: 0.0, rot: 0.0 };
+        } else {
+            if (timeInReverseAgainPhase > CONFIG.DRIVE.REVERSE_STEP_MS) {
+                STATE.reverseAgainPhase.phase = 'PAUSED';
+                STATE.reverseAgainPhase.phaseStartTime = currentTime;
+                return { x: 0.0, y: 0.0, rot: 0.0 };
+            }
             return { x: 0.0, y: CONFIG.DRIVE.REVERSE_SPEED, rot: 0.0 };
         }
     }
