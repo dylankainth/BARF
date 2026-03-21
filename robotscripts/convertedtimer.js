@@ -277,6 +277,7 @@ function determineVelocities(currentTime, dt) {
 // ==========================================
 stopAprilTag();
 startYolo();
+playAudio('fardinho');
 
 while (true) {
     try {
