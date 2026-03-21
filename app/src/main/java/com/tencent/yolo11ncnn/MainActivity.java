@@ -16,9 +16,14 @@ package com.tencent.yolo11ncnn;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.PixelFormat;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.content.pm.ActivityInfo;
@@ -45,6 +50,7 @@ import java.net.InetAddress;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 import java.net.URI;
+import java.util.Locale;
 
 // Removed complex robot imports - using simple server now
 
@@ -95,6 +101,11 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Si
     private YOLO11Ncnn yolo11ncnn = new YOLO11Ncnn();
     private boolean serverInitialized = false;
     private int facing = 1;
+
+    // Quaternion tracking
+    private SensorManager sensorManager;
+    private final float[] currentQuat = new float[4];
+    private long lastQuatLog = 0;
     
     // Robot control state
     private volatile boolean isMoving = false;
@@ -236,6 +247,9 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Si
         
         // Start simple HTTP/WebSocket server
         startSimpleServer();
+
+        // Initialize quaternion sensors
+        initQuaternionSensors();
     }
     
     /**
@@ -417,6 +431,31 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Si
             Log.d("MainActivity", "Broadcast sent: " + message);
         }
     }
+
+    private void initQuaternionSensors() {
+        sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+        Sensor rotVector = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+
+        if (rotVector == null) return;
+
+        sensorManager.registerListener(new SensorEventListener() {
+            @Override
+            public void onSensorChanged(SensorEvent event) {
+                // Extracts [w, x, y, z] directly into our array
+                SensorManager.getQuaternionFromVector(currentQuat, event.values);
+
+                // Throttle logging to 2Hz (every 500ms)
+                long now = System.currentTimeMillis();
+                if (now - lastQuatLog >= 500) {
+                    Log.d("Quat", String.format(Locale.US, "W:%.2f X:%.2f Y:%.2f Z:%.2f",
+                          currentQuat[0], currentQuat[1], currentQuat[2], currentQuat[3]));
+                    lastQuatLog = now;
+                }
+            }
+            @Override
+            public void onAccuracyChanged(Sensor s, int a) {}
+        }, rotVector, SensorManager.SENSOR_DELAY_GAME);
+    }
     
     /**
      * Get the device's local IP address connected to the network.
@@ -585,6 +624,11 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Si
         lastCommand = "camera_switch";
         
         broadcastTestMessage("Camera switched to " + (newFacing == 0 ? "back" : "front"));
+    }
+    
+    @Override
+    public float[] getQuaternion() {
+        return currentQuat.clone();
     }
     
     @Override

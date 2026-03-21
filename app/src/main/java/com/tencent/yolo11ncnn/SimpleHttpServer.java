@@ -53,6 +53,7 @@ public class SimpleHttpServer extends NanoHTTPD {
         void onCameraSwitch();
         void setYoloEnabled(boolean enabled);
         void setAprilTagEnabled(boolean enabled);
+        float[] getQuaternion();
         RobotStatus getRobotStatus();
     }
     
@@ -158,6 +159,14 @@ public class SimpleHttpServer extends NanoHTTPD {
                 if (robotCallback != null) {
                     robotCallback.setAprilTagEnabled(enabled);
                 }
+            }
+
+            @Override
+            public float[] getQuaternion() {
+                if (robotCallback != null) {
+                    return robotCallback.getQuaternion();
+                }
+                return new float[]{1.0f, 0.0f, 0.0f, 0.0f};
             }
         });
     }

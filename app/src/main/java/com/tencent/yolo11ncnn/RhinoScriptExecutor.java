@@ -46,6 +46,7 @@ public class RhinoScriptExecutor {
         void onRobotStop();
         void setYoloEnabled(boolean enabled);
         void setAprilTagEnabled(boolean enabled);
+        float[] getQuaternion();
     }
     
     public RhinoScriptExecutor(AudioPlayer audioPlayer, RobotCommandCallback callback) {
@@ -272,7 +273,8 @@ public class RhinoScriptExecutor {
             // Audio functions
             "function playAudio(audioName) { audio.play(audioName); }\n" +
             "function stopAudio() { audio.stop(); }\n" +
-            "function playSound(audioName) { audio.play(audioName); }\n";
+            "function playSound(audioName) { audio.play(audioName); }\n" +
+            "function getQuaternion() { return robot.getQuaternion(); }\n";
         
         cx.evaluateString(scope, helperFunctions, "helpers", 1, null);
 
@@ -443,6 +445,16 @@ public class RhinoScriptExecutor {
             if (callback != null) {
                 callback.setAprilTagEnabled(enabled);
             }
+        }
+
+        /**
+         * Get current orientation as quaternion [w, x, y, z].
+         */
+        public float[] getQuaternion() {
+            if (callback != null) {
+                return callback.getQuaternion();
+            }
+            return new float[]{1.0f, 0.0f, 0.0f, 0.0f};
         }
         
         /**
