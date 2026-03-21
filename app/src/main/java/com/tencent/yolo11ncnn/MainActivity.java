@@ -681,7 +681,20 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Si
                         send(command); // Send the pending command
                     }
                     @Override
-                    public void onMessage(String message) {}
+                    public void onMessage(String message) {
+                        if (message == null) return;
+
+                        String trimmed = message.trim();
+                        Log.d("MainActivity", "Robot WS message <- " + trimmed);
+
+                        // ESP32 button message format: button:pressed or button:released
+                        if (trimmed.startsWith("button:")) {
+                            String eventType = trimmed.substring("button:".length()).trim();
+                            if (simpleServer != null) {
+                                simpleServer.pushButtonEvent(eventType);
+                            }
+                        }
+                    }
                     @Override
                     public void onClose(int code, String reason, boolean remote) {
                         Log.i("MainActivity", "WebSocket closed: " + reason);

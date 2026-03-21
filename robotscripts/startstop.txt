@@ -1,2 +1,5 @@
 adb shell am force-stop com.tencent.yolo11ncnn
 adb shell am start --user 0 -a android.intent.action.MAIN -n com.tencent.yolo11ncnn/.MainActivity
+
+adb devices
+adb -s RZCX90JP5AD shell ip neigh

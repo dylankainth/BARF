@@ -997,6 +997,30 @@ public class SimpleHttpServer extends NanoHTTPD {
             }
         }
     }
+
+    /**
+     * Push robot button event into the scripting environment (if active).
+     */
+    public void pushButtonEvent(String eventType) {
+        if (eventType == null) return;
+
+        if (this.scriptExecutor != null) {
+            this.scriptExecutor.pushButtonEvent(eventType);
+        }
+
+        // Optionally broadcast button events to websocket clients for debugging
+        if (this.webSocketServer != null) {
+            try {
+                com.google.gson.JsonObject msg = new com.google.gson.JsonObject();
+                msg.addProperty("type", "button");
+                msg.addProperty("timestamp", System.currentTimeMillis());
+                msg.addProperty("event", eventType);
+                this.webSocketServer.broadcast(msg.toString());
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to broadcast button event: " + e.getMessage());
+            }
+        }
+    }
     
     // ============================================
     // Audio API Handlers

@@ -32,6 +32,8 @@ public class RhinoScriptExecutor {
     private Context rhinoContext = null;
     // For YOLO detection API
     private volatile String lastDetectionsJson = "[]";
+    // For robot button event API
+    private volatile String lastButtonEvent = "";
     private volatile ScriptableObject globalScope = null;
     private final Gson gson = new Gson();
     
@@ -179,6 +181,49 @@ public class RhinoScriptExecutor {
             Context.exit();
         }
     }
+
+    /**
+     * Push a robot button event from Java side into the Rhino executor.
+     * Invokes any registered JS callback set via `onButton(fn)`.
+     */
+    public void pushButtonEvent(String eventType) {
+        if (eventType == null) return;
+
+        String normalized = eventType.trim().toLowerCase(Locale.US);
+        if (!"pressed".equals(normalized) && !"released".equals(normalized)) {
+            appendOutput("Ignoring unknown button event: " + eventType);
+            return;
+        }
+
+        lastButtonEvent = normalized;
+
+        ScriptableObject scope;
+        synchronized (this) {
+            scope = this.globalScope;
+        }
+
+        if (scope == null) {
+            // no active script scope to call into
+            return;
+        }
+
+        Context cx = Context.enter();
+        try {
+            cx.setOptimizationLevel(-1);
+
+            Object cb = ScriptableObject.getProperty(scope, "__robot_onButton");
+            if (cb instanceof Function) {
+                Function fn = (Function) cb;
+                try {
+                    fn.call(cx, scope, scope, new Object[]{normalized});
+                } catch (Exception e) {
+                    appendOutput("Error calling button callback: " + e.getMessage());
+                }
+            }
+        } finally {
+            Context.exit();
+        }
+    }
     
     /**
      * Execute the script using Rhino.
@@ -270,6 +315,9 @@ public class RhinoScriptExecutor {
             // YOLO detection helpers
             "function onDetection(fn) { this.__yolo_onDetection = fn; }\n" +
             "function getLastDetections() { try { return JSON.parse(robot.getLastDetections()); } catch(e) { return []; } }\n" +
+            // Robot button helpers
+            "function onButton(fn) { this.__robot_onButton = fn; }\n" +
+            "function getLastButtonEvent() { return robot.getLastButtonEvent(); }\n" +
             // Audio functions
             "function playAudio(audioName) { audio.play(audioName); }\n" +
             "function stopAudio() { audio.stop(); }\n" +
@@ -427,6 +475,13 @@ public class RhinoScriptExecutor {
          */
         public String getLastDetections() {
             return lastDetectionsJson != null ? lastDetectionsJson : "[]";
+        }
+
+        /**
+         * Return the last robot button event string ("pressed" or "released").
+         */
+        public String getLastButtonEvent() {
+            return lastButtonEvent != null ? lastButtonEvent : "";
         }
 
         /**
