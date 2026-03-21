@@ -1,12 +1,11 @@
 // --- CONFIGURATION ---
 var PING_PONG_LABEL = 32;
-var TARGET_APRILTAG_ID = 2; 
-var CAMERA_OFFSET_MULTIPLIER = 1.5; 
+var TARGET_APRILTAG_ID = 20; 
+var CAMERA_OFFSET_MULTIPLIER = 1.1; 
 var CENTER_X = 0.5; 
 var TARGET_CENTER_TOLERANCE = 0.1; 
 var YAW_TOLERANCE_DEG = 1.0; 
 var SIGHT_TIMEOUT_MS = 500;
-var SWITCH_TO_TAG_MS = 150000; 
 
 // --- DISTANCE P-LOOP CONFIG ---
 var TARGET_TAG_SIZE = 0.50;      // Target height % of viewport
@@ -86,7 +85,7 @@ onDetection(function(dets) {
                     }
                     tagWidth = maxX - minX; tagHeight = maxY - minY;
                 }
-                tagX = tag.get("cx") + (tagWidth * CAMERA_OFFSET_MULTIPLIER);
+                tagX = tag.get("cx") + (tagWidth * 0.5) + (tagWidth * CAMERA_OFFSET_MULTIPLIER);
                 lastSeenTagTime = Date.now();
                 break;
             }
@@ -124,7 +123,7 @@ while (true) {
 
         switch (currentState) {
             case STATE_SEARCH_APRILTAG:
-                smartDrive(0, 0, 0.15, now);
+                smartDrive(0, 0, 0.18, now);
                 if (tagVisible) { 
                     strafeIntegral = 0; 
                     rotIntegral = 0;
@@ -181,7 +180,8 @@ while (true) {
                 smartDrive(0, 0, 0.5, now); 
                 if (now - rotate180StartTime > 1500) {
                     depositStartTime = now;
-                    currentState = STATE_DEPOSIT_BALLS;
+                    // currentState = STATE_DEPOSIT_BALLS;
+                    currentState = STATE_DONE;
                 }
                 break;
 
