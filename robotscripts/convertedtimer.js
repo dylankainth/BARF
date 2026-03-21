@@ -275,9 +275,33 @@ function determineVelocities(currentTime, dt) {
 // ==========================================
 // MAIN CONTROL LOOP
 // ==========================================
+var buttonPressed = false;
+
+onButton(function (state) {
+    if (state === "pressed") {
+        log("Button pressed - starting main control loop");
+        buttonPressed = true;
+    } else if (state === "released") {
+        log("Button released");
+    }
+});
+
 stopAprilTag();
 startYolo();
 playAudio('fardinho');
+
+// Wait for button press before starting main control loop
+log("Waiting for button press to start tracking...");
+while (!buttonPressed) {
+    try {
+        wait(100);
+    } catch (e) {
+        console.log("Script interrupted or stopped: " + e);
+        break;
+    }
+}
+
+log("Starting main tracking control loop...");
 
 while (true) {
     try {
