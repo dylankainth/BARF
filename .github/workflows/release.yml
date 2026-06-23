@@ -24,7 +24,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: npm ci
         working-directory: desktop
-      - run: npm run tauri build
+      - name: Build desktop app
+        run: npm run tauri build 2>&1
         working-directory: desktop
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -47,19 +48,24 @@ jobs:
 
       - name: ncnn
         run: |
-          wget -q https://github.com/Tencent/ncnn/releases/download/${NCNN_VERSION}/ncnn-${NCNN_VERSION}-android-vulkan.zip
-          unzip -q ncnn-${NCNN_VERSION}-android-vulkan.zip -d android/src/main/jni
+          mkdir -p android/src/main/jni
+          curl -sL -o ncnn.zip https://github.com/Tencent/ncnn/releases/download/${NCNN_VERSION}/ncnn-${NCNN_VERSION}-android-vulkan.zip
+          unzip -q ncnn.zip -d android/src/main/jni
+          rm ncnn.zip
 
       - name: opencv-mobile
         run: |
-          wget -q https://github.com/nihui/opencv-mobile/releases/download/${OPENCV_MOBILE_TAG}/opencv-mobile-${OPENCV_VERSION}-android.zip
-          unzip -q opencv-mobile-${OPENCV_VERSION}-android.zip -d android/src/main/jni
+          mkdir -p android/src/main/jni
+          curl -sL -o opencv.zip https://github.com/nihui/opencv-mobile/releases/download/${OPENCV_MOBILE_TAG}/opencv-mobile-${OPENCV_VERSION}-android.zip
+          unzip -q opencv.zip -d android/src/main/jni
+          rm opencv.zip
 
       - name: vulkan-turnip-driver
         run: |
-          wget -q https://github.com/nihui/mesa-turnip-android-driver/releases/download/${MESA_TURNIP_VERSION}/mesa-turnip-android-${MESA_TURNIP_VERSION}.zip
+          curl -sL -o mesa.zip https://github.com/nihui/mesa-turnip-android-driver/releases/download/${MESA_TURNIP_VERSION}/mesa-turnip-android-${MESA_TURNIP_VERSION}.zip
           mkdir -p android/src/main/jniLibs/arm64-v8a
-          unzip -q mesa-turnip-android-${MESA_TURNIP_VERSION}.zip -d android/src/main/jniLibs/arm64-v8a
+          unzip -q mesa.zip -d android/src/main/jniLibs/arm64-v8a
+          rm mesa.zip
 
       - name: modify-jni-cmakelists
         run: |

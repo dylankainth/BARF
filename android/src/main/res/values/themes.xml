@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.BARF" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/barf_bg</item>
+        <item name="android:colorBackground">@color/barf_bg</item>
+        <item name="android:textColorPrimary">@color/barf_text_primary</item>
+        <item name="android:textColorSecondary">@color/barf_text_secondary</item>
+        <item name="android:statusBarColor">@color/barf_bg</item>
+        <item name="android:navigationBarColor">@color/barf_bg</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:colorControlHighlight">#1AFFFFFF</item>
+    </style>
+</resources>

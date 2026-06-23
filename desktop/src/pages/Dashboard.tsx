@@ -3,7 +3,7 @@ import QrPairingCard from "../components/QrPairingCard";
 import SerialMonitor from "../components/SerialMonitor";
 
 export default function Dashboard() {
-  const [status, setStatus] = useState<any>({ isMoving: false, lastCommand: "none", cameraFacing: 0 });
+  const [status, setStatus] = useState<any>({ isMoving: false, lastCommand: "none", cameraFacing: 0, yoloEnabled: false, apriltagEnabled: false });
   const [phoneIp, setPhoneIp] = useState("");
   const [speed, setSpeed] = useState(0.5);
   const [phoneStatus, setPhoneStatus] = useState<string>("Disconnected");
@@ -50,6 +50,8 @@ export default function Dashboard() {
   const rotate = (d: string) => post("/api/robot/rotate", { direction: d, speed });
   const stop = () => post("/api/robot/stop", {});
   const switchCamera = () => post("/api/robot/camera/switch", {});
+  const toggleYolo = () => post("/api/detection/yolo", { enabled: !status.yoloEnabled });
+  const toggleAprilTag = () => post("/api/detection/apriltag", { enabled: !status.apriltagEnabled });
 
   return (
     <div className="space-y-6">
@@ -86,6 +88,14 @@ export default function Dashboard() {
           <div className="flex gap-3 w-full">
             <button onClick={switchCamera} className="flex-1 btn">Switch Camera</button>
             <button onClick={stop} className="flex-1 btn-destructive">Emergency Stop</button>
+          </div>
+          <div className="flex gap-3 w-full pt-3">
+            <button onClick={toggleYolo} className={`flex-1 btn ${status.yoloEnabled ? "btn-active" : ""}`}>
+              YOLO Detection {status.yoloEnabled ? "ON" : "OFF"}
+            </button>
+            <button onClick={toggleAprilTag} className={`flex-1 btn ${status.apriltagEnabled ? "btn-active" : ""}`}>
+              AprilTag Detection {status.apriltagEnabled ? "ON" : "OFF"}
+            </button>
           </div>
         </article>
 

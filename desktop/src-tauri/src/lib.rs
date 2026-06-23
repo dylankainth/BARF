@@ -1,3 +1,4 @@
+pub mod arduino_manager;
 pub mod compile;
 pub mod pairing_server;
 pub mod phone_bridge;
@@ -69,9 +70,26 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_status,
             compile::compile_wasm,
+            compile::compile_esp32,
+            compile::flash_esp32,
+            compile::list_serial_ports,
             phone_bridge::deploy_wasm,
+            phone_bridge::get_phone_status,
             start_pairing,
             get_paired_phone_ip,
+            arduino_manager::get_additional_urls,
+            arduino_manager::add_additional_url,
+            arduino_manager::remove_additional_url,
+            arduino_manager::list_installed_platforms,
+            arduino_manager::search_platforms,
+            arduino_manager::install_platform,
+            arduino_manager::uninstall_platform,
+            arduino_manager::update_core_index,
+            arduino_manager::list_installed_libraries,
+            arduino_manager::search_libraries,
+            arduino_manager::install_library,
+            arduino_manager::uninstall_library,
+            arduino_manager::update_library_index,
         ])
         .setup(move |_app| {
             tauri::async_runtime::spawn(async move {

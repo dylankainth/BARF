@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">yolo11ncnn</string>
+    <string name="app_name">BARF</string>
     <string-array name="task_array">
         <item>coco</item>
         <item>seg</item>

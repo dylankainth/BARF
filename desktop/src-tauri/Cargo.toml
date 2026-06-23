@@ -5,7 +5,7 @@ edition = "2021"
 
 [lib]
 name = "barf_desktop_lib"
-crate-type = ["lib", "cdylib", "staticlib"]
+crate-type = ["lib"]
 
 [package.metadata]
 

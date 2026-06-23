@@ -62,7 +62,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Ph
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (getActionBar() != null) getActionBar().hide();
-        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         setContentView(R.layout.main);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 

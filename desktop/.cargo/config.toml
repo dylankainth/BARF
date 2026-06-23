@@ -1,0 +1,9 @@
+[target.x86_64-pc-windows-gnu]
+# Use gcc as linker driver with rust-lld (via -fuse-ld=lld and -B path).
+# rust-lld doesn't have the 65535 export ordinal limit of ld.bfd.
+linker = "C:\\msys64\\mingw64\\bin\\gcc.exe"
+ar = "C:\\msys64\\mingw64\\bin\\ar.exe"
+rustflags = [
+    "-C", "link-arg=-fuse-ld=lld",
+    "-C", "link-arg=-BC:\\Users\\dylan\\barf-linker",
+]

@@ -17,12 +17,15 @@
     <uses-feature android:name="android.hardware.camera2.full" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
-    <application android:label="@string/app_name" android:networkSecurityConfig="@xml/network_security_config">
+    <application android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:theme="@style/Theme.BARF"
+        android:networkSecurityConfig="@xml/network_security_config">
         <activity
             android:name=".pairing.PairingActivity"
             android:label="@string/app_name"
             android:exported="true"
-            android:screenOrientation="landscape"
+            android:screenOrientation="portrait"
             android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -33,7 +36,7 @@
             android:name="MainActivity"
             android:label="@string/app_name"
             android:exported="false"
-            android:screenOrientation="landscape"
+            android:screenOrientation="portrait"
             android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />

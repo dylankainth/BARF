@@ -28,6 +28,12 @@ public class YoloBridge
     // Register the Android Activity instance so native code can callback safely
     public native void registerActivity(android.app.Activity activity);
 
+    // Toggle YOLO and AprilTag detection at runtime
+    public static native void setYoloEnabled(boolean enabled);
+    public static native void setAprilTagEnabled(boolean enabled);
+    public static native boolean isYoloEnabled();
+    public static native boolean isAprilTagEnabled();
+
     static {
         System.loadLibrary("yolo11ncnn");
     }

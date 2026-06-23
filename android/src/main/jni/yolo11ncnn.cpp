@@ -120,6 +120,8 @@ struct AppContext {
     JavaVM* jvm = nullptr;
     jobject main_activity = nullptr;
     std::atomic<int> display_rotation{0};
+    std::atomic<bool> yolo_enabled{false};
+    std::atomic<bool> apriltag_enabled{false};
     ncnn::Mutex lock;
 };
 
@@ -157,7 +159,7 @@ void MyNdkCamera::on_image_render(cv::Mat& rgb) const
     {
         ncnn::MutexLockGuard g(g_ctx.lock);
 
-        if (g_ctx.yolo)
+        if (g_ctx.yolo && g_ctx.yolo_enabled.load())
         {
             g_ctx.yolo->detect(rgb, yolo_objects);
             g_ctx.yolo->draw(rgb, yolo_objects);
@@ -169,7 +171,7 @@ void MyNdkCamera::on_image_render(cv::Mat& rgb) const
     }
 
     // ---- AprilTag detection (independent of YOLO lock) -------------------
-    if (g_ctx.apriltag)
+    if (g_ctx.apriltag && g_ctx.apriltag_enabled.load())
     {
         cv::Mat gray;
         cv::cvtColor(rgb, gray, CV_BGR2GRAY);
@@ -432,6 +434,32 @@ JNIEXPORT void JNICALL Java_com_barf_YoloBridge_setDisplayOrientation(JNIEnv* en
         g_ctx.display_rotation.store(d);
         __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "setDisplayOrientation %d", d);
     }
+}
+
+// public static native void setYoloEnabled(boolean enabled);
+JNIEXPORT void JNICALL Java_com_barf_YoloBridge_setYoloEnabled(JNIEnv* env, jclass clazz, jboolean enabled)
+{
+    g_ctx.yolo_enabled.store(enabled != JNI_FALSE);
+    __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "setYoloEnabled %d", enabled);
+}
+
+// public static native void setAprilTagEnabled(boolean enabled);
+JNIEXPORT void JNICALL Java_com_barf_YoloBridge_setAprilTagEnabled(JNIEnv* env, jclass clazz, jboolean enabled)
+{
+    g_ctx.apriltag_enabled.store(enabled != JNI_FALSE);
+    __android_log_print(ANDROID_LOG_DEBUG, "ncnn", "setAprilTagEnabled %d", enabled);
+}
+
+// public static native boolean isYoloEnabled();
+JNIEXPORT jboolean JNICALL Java_com_barf_YoloBridge_isYoloEnabled(JNIEnv* env, jclass clazz)
+{
+    return g_ctx.yolo_enabled.load() ? JNI_TRUE : JNI_FALSE;
+}
+
+// public static native boolean isAprilTagEnabled();
+JNIEXPORT jboolean JNICALL Java_com_barf_YoloBridge_isAprilTagEnabled(JNIEnv* env, jclass clazz)
+{
+    return g_ctx.apriltag_enabled.load() ? JNI_TRUE : JNI_FALSE;
 }
 
 }

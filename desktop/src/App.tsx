@@ -4,14 +4,16 @@ import Dashboard from "./pages/Dashboard";
 import VisionEditor from "./pages/VisionEditor";
 import FirmwareEditor from "./pages/FirmwareEditor";
 import SettingsPage from "./pages/SettingsPage";
+import ArduinoManagerPage from "./pages/ArduinoManagerPage";
 
-type Route = "dashboard" | "vision" | "firmware" | "settings";
+type Route = "dashboard" | "vision" | "firmware" | "settings" | "arduino";
 
 const tabs: { key: Route; label: string }[] = [
   { key: "dashboard", label: "Dashboard" },
   { key: "vision", label: "Vision (WASM)" },
   { key: "firmware", label: "Firmware (ESP32)" },
   { key: "settings", label: "Settings" },
+  { key: "arduino", label: "Arduino Manager" },
 ];
 
 export function App() {
@@ -47,6 +49,7 @@ export function App() {
           {route === "vision" && <VisionEditor />}
           {route === "firmware" && <FirmwareEditor />}
           {route === "settings" && <SettingsPage />}
+          {route === "arduino" && <ArduinoManagerPage />}
         </section>
       </main>
     </div>

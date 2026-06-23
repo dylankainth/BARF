@@ -3,6 +3,7 @@ package com.barf.server;
 import android.content.Context;
 import android.util.Log;
 
+import com.barf.YoloBridge;
 import com.barf.SimpleWebSocketServer;
 import com.barf.VideoStreamServer;
 import com.barf.runtime.JsRuntime;
@@ -245,6 +246,12 @@ public class PhoneApiServer extends NanoHTTPD {
             case "/api/robot/camera/switch":
                 if (method == Method.POST) return handleCameraSwitch();
                 break;
+            case "/api/detection/yolo":
+                if (method == Method.POST) return handleDetectionYolo(session);
+                break;
+            case "/api/detection/apriltag":
+                if (method == Method.POST) return handleDetectionAprilTag(session);
+                break;
         }
         return createJsonResponse(Response.Status.NOT_FOUND, errorJson("API endpoint not found: " + uri));
     }
@@ -261,6 +268,8 @@ public class PhoneApiServer extends NanoHTTPD {
         if (webSocketServer != null) {
             status.addProperty("wsClients", webSocketServer.getClientCount());
         }
+        status.addProperty("yoloEnabled", YoloBridge.isYoloEnabled());
+        status.addProperty("apriltagEnabled", YoloBridge.isAprilTagEnabled());
         if (callback != null) {
             status.addProperty("cameraFacing", callback.getCameraFacing());
         }
@@ -382,6 +391,36 @@ public class PhoneApiServer extends NanoHTTPD {
         resp.addProperty("success", true);
         resp.addProperty("cameraFacing", callback != null ? callback.getCameraFacing() : -1);
         return createJsonResponse(Response.Status.OK, resp.toString());
+    }
+
+    private Response handleDetectionYolo(IHTTPSession session) {
+        try {
+            String body = getBody(session);
+            JsonObject json = JsonParser.parseString(body).getAsJsonObject();
+            boolean enabled = json.has("enabled") && json.get("enabled").getAsBoolean();
+            YoloBridge.setYoloEnabled(enabled);
+            JsonObject resp = new JsonObject();
+            resp.addProperty("success", true);
+            resp.addProperty("enabled", YoloBridge.isYoloEnabled());
+            return createJsonResponse(Response.Status.OK, resp.toString());
+        } catch (Exception e) {
+            return createJsonResponse(Response.Status.BAD_REQUEST, errorJson(e.getMessage()));
+        }
+    }
+
+    private Response handleDetectionAprilTag(IHTTPSession session) {
+        try {
+            String body = getBody(session);
+            JsonObject json = JsonParser.parseString(body).getAsJsonObject();
+            boolean enabled = json.has("enabled") && json.get("enabled").getAsBoolean();
+            YoloBridge.setAprilTagEnabled(enabled);
+            JsonObject resp = new JsonObject();
+            resp.addProperty("success", true);
+            resp.addProperty("enabled", YoloBridge.isAprilTagEnabled());
+            return createJsonResponse(Response.Status.OK, resp.toString());
+        } catch (Exception e) {
+            return createJsonResponse(Response.Status.BAD_REQUEST, errorJson(e.getMessage()));
+        }
     }
 
     private String getBody(IHTTPSession session) throws IOException {
