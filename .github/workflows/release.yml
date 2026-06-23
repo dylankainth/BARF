@@ -61,15 +61,13 @@ jobs:
           unzip -q opencv-mobile-${OPENCV_VERSION}-android.zip -d android/src/main/jni
 
       - name: vulkan-turnip-driver
+        continue-on-error: true
         run: |
-          set -e
           mkdir -p android/src/main/jniLibs/arm64-v8a
-          gh release download ${MESA_TURNIP_VERSION} \
-            --repo nihui/mesa-turnip-android-driver \
-            --pattern "mesa-turnip-android-${MESA_TURNIP_VERSION}.zip" \
-            --dir /tmp/mesa
-          unzip -q /tmp/mesa/mesa-turnip-android-${MESA_TURNIP_VERSION}.zip \
-            -d android/src/main/jniLibs/arm64-v8a/
+          curl -fL --retry 3 -o mesa.zip \
+            "https://github.com/nihui/mesa-turnip-android-driver/releases/download/${MESA_TURNIP_VERSION}/mesa-turnip-android-${MESA_TURNIP_VERSION}.zip"
+          unzip -q mesa.zip -d android/src/main/jniLibs/arm64-v8a/
+          rm mesa.zip
 
       - name: modify-jni-cmakelists
         run: |
