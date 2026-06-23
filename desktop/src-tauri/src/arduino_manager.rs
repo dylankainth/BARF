@@ -58,7 +58,8 @@ pub fn get_additional_urls() -> Result<Vec<String>, String> {
         serde_json::from_str(&stdout).map_err(|e| format!("JSON parse error: {}", e))?;
 
     let urls = json
-        .get("board_manager")
+        .get("config")
+        .and_then(|cfg| cfg.get("board_manager"))
         .and_then(|bm| bm.get("additional_urls"))
         .and_then(|v| v.as_array())
         .map(|arr| {
