@@ -23,7 +23,6 @@ import androidx.lifecycle.LifecycleEventObserver;
 import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.LifecycleRegistry;
 
-import com.barf.MainActivity;
 import com.barf.R;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.mlkit.vision.barcode.BarcodeScanner;
@@ -59,6 +58,56 @@ public class PairingActivity extends Activity implements ImageAnalysis.Analyzer,
     private PairingManager pairingManager;
     private WireGuardManager wireGuardManager;
 
+    /** Parsed parameters from a {@code barf://pair?...} QR URI. */
+    static class PairingParams {
+        String desktopIp;
+        String pairKey;
+        int port;
+        String wgServerIp;
+        String wgPublicKey;
+        String wgClientIp;
+        int wgPort;
+    }
+
+    /**
+     * Parses a {@code barf://pair?ip=X&key=Y&...} URI into a {@link PairingParams}.
+     * Returns null if the URI has no query string or if either {@code ip} or
+     * {@code key} are missing.
+     */
+    static PairingParams parsePairingUri(String uri) {
+        if (uri == null || !uri.contains("?")) {
+            return null;
+        }
+
+        PairingParams params = new PairingParams();
+        params.port = 9876;
+        params.wgPort = 51820;
+
+        try {
+            String query = uri.substring(uri.indexOf('?') + 1);
+            for (String param : query.split("&")) {
+                String[] kv = param.split("=", 2);
+                if (kv.length != 2) continue;
+                switch (kv[0]) {
+                    case "ip":        params.desktopIp   = kv[1]; break;
+                    case "key":       params.pairKey     = kv[1]; break;
+                    case "port":      params.port        = Integer.parseInt(kv[1]); break;
+                    case "wg_ip":     params.wgServerIp  = kv[1]; break;
+                    case "wg_key":    params.wgPublicKey = kv[1]; break;
+                    case "wg_client": params.wgClientIp  = kv[1]; break;
+                    case "wg_port":   params.wgPort      = Integer.parseInt(kv[1]); break;
+                }
+            }
+        } catch (NumberFormatException e) {
+            return null;
+        }
+
+        if (params.desktopIp == null || params.pairKey == null) {
+            return null;
+        }
+        return params;
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -74,20 +123,14 @@ public class PairingActivity extends Activity implements ImageAnalysis.Analyzer,
         barcodeScanner = BarcodeScanning.getClient();
         analysisExecutor = Executors.newSingleThreadExecutor();
         mainHandler = new Handler(Looper.getMainLooper());
-        
+
         pairingManager = new PairingManager(this);
         wireGuardManager = new WireGuardManager(this);
 
-        // Check if already paired
-        if (pairingManager.isPaired()) {
-            String desktopIp = pairingManager.getDesktopIp();
-            statusText.setText("Already paired with " + desktopIp + ". Connecting...");
-            connectToExistingPairing(desktopIp);
-        } else {
-            startCamera();
-            // Timeout: if no QR scanned in 30s, cancel
-            mainHandler.postDelayed(this::onTimeout, SCAN_TIMEOUT_MS);
-        }
+        // Always clear any stale pairing and start fresh camera scan.
+        pairingManager.clearPairing();
+        startCamera();
+        mainHandler.postDelayed(this::onTimeout, SCAN_TIMEOUT_MS);
     }
 
     @Override
@@ -121,9 +164,7 @@ public class PairingActivity extends Activity implements ImageAnalysis.Analyzer,
 
             } catch (ExecutionException | InterruptedException e) {
                 Log.e(TAG, "Camera init failed: " + e.getMessage());
-                runOnUiThread(() -> {
-                    statusText.setText("Camera error: " + e.getMessage());
-                });
+                runOnUiThread(() -> statusText.setText("Camera error: " + e.getMessage()));
             }
         }, ContextCompat.getMainExecutor(this));
     }
@@ -160,33 +201,8 @@ public class PairingActivity extends Activity implements ImageAnalysis.Analyzer,
 
         runOnUiThread(() -> statusText.setText("QR detected! Connecting..."));
 
-        // Parse URI: barf://pair?ip=X.X.X.X&key=XXXX&port=9876&wg_ip=WG_IP&wg_key=WG_KEY&wg_client=CLIENT_IP&wg_port=51820
-        String desktopIp = null;
-        String pairKey = null;
-        int port = 9876;
-        String wgServerIp = null;
-        String wgPublicKey = null;
-        String wgClientIp = null;
-        int wgPort = 51820;
-
-        try {
-            String query = uri.substring(uri.indexOf('?') + 1);
-            String[] params = query.split("&");
-            for (String param : params) {
-                String[] kv = param.split("=", 2);
-                if (kv.length != 2) continue;
-                switch (kv[0]) {
-                    case "ip": desktopIp = kv[1]; break;
-                    case "key": pairKey = kv[1]; break;
-                    case "port": port = Integer.parseInt(kv[1]); break;
-                    case "wg_ip": wgServerIp = kv[1]; break;
-                    case "wg_key": wgPublicKey = kv[1]; break;
-                    case "wg_client": wgClientIp = kv[1]; break;
-                    case "wg_port": wgPort = Integer.parseInt(kv[1]); break;
-                }
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to parse QR URI: " + e.getMessage());
+        PairingParams params = parsePairingUri(uri);
+        if (params == null) {
             runOnUiThread(() -> {
                 statusText.setText("Invalid QR code format");
                 paired = false;
@@ -194,23 +210,6 @@ public class PairingActivity extends Activity implements ImageAnalysis.Analyzer,
             return;
         }
 
-        if (desktopIp == null || pairKey == null) {
-            runOnUiThread(() -> {
-                statusText.setText("QR missing IP or key");
-                paired = false;
-            });
-            return;
-        }
-
-        final String finalDesktopIp = desktopIp;
-        final String finalPairKey = pairKey;
-        final int finalPort = port;
-        final String finalWgServerIp = wgServerIp;
-        final String finalWgPublicKey = wgPublicKey;
-        final String finalWgClientIp = wgClientIp;
-        final int finalWgPort = wgPort;
-
-        // Do the pairing POST on the analysis executor
         analysisExecutor.execute(() -> {
             String phoneIp = getLocalIpAddress();
             if (phoneIp == null) {
@@ -221,12 +220,13 @@ public class PairingActivity extends Activity implements ImageAnalysis.Analyzer,
                 return;
             }
 
-            // Establish WireGuard connection first if parameters provided
-            if (finalWgServerIp != null && finalWgPublicKey != null && finalWgClientIp != null) {
+            if (params.wgServerIp != null && params.wgPublicKey != null && params.wgClientIp != null) {
                 runOnUiThread(() -> statusText.setText("Establishing WireGuard connection..."));
                 try {
-                    wireGuardManager.connect(finalWgServerIp, finalWgPublicKey, finalWgClientIp, finalWgPort);
-                    Thread.sleep(1000); // Wait for connection to establish
+                    wireGuardManager.connect(
+                            params.wgServerIp, params.wgPublicKey,
+                            params.wgClientIp, params.wgPort);
+                    Thread.sleep(1000);
                 } catch (Exception e) {
                     Log.e(TAG, "WireGuard connection failed: " + e.getMessage());
                     runOnUiThread(() -> {
@@ -237,58 +237,33 @@ public class PairingActivity extends Activity implements ImageAnalysis.Analyzer,
                 }
             }
 
-            boolean success = sendPairingRequest(finalDesktopIp, finalPort, finalPairKey, phoneIp);
+            boolean success = sendPairingRequest(
+                    params.desktopIp, params.port, params.pairKey, phoneIp);
             if (success) {
-                Log.i(TAG, "Paired with desktop at " + finalDesktopIp);
-                
-                // Save pairing information
-                pairingManager.savePairing(finalDesktopIp, finalWgServerIp, finalWgPublicKey, finalWgClientIp, finalWgPort);
-                
+                Log.i(TAG, "Paired with desktop at " + params.desktopIp);
+                pairingManager.savePairing(
+                        params.desktopIp, params.wgServerIp,
+                        params.wgPublicKey, params.wgClientIp, params.wgPort);
+
                 runOnUiThread(() -> {
-                    statusText.setText("Paired with " + finalDesktopIp);
-                    // Launch MainActivity with pairing info
-                    Intent mainIntent = new Intent(PairingActivity.this, MainActivity.class);
-                    mainIntent.putExtra("desktop_ip", finalDesktopIp);
-                    mainIntent.putExtra("phone_ip", phoneIp);
-                    mainIntent.putExtra("wg_server_ip", finalWgServerIp);
-                    mainIntent.putExtra("wg_public_key", finalWgPublicKey);
-                    mainIntent.putExtra("wg_client_ip", finalWgClientIp);
-                    mainIntent.putExtra("wg_port", finalWgPort);
-                    startActivity(mainIntent);
+                    statusText.setText("Paired with " + params.desktopIp);
+                    Intent result = new Intent();
+                    result.putExtra("desktop_ip", params.desktopIp);
+                    result.putExtra("phone_ip", phoneIp);
+                    result.putExtra("wg_server_ip", params.wgServerIp);
+                    result.putExtra("wg_public_key", params.wgPublicKey);
+                    result.putExtra("wg_client_ip", params.wgClientIp);
+                    result.putExtra("wg_port", params.wgPort);
+                    setResult(RESULT_OK, result);
                     finish();
                 });
             } else {
                 runOnUiThread(() -> {
-                    statusText.setText("Failed to reach desktop at " + finalDesktopIp);
+                    statusText.setText("Failed to reach desktop at " + params.desktopIp);
                     paired = false;
                 });
             }
         });
-    }
-
-    private void connectToExistingPairing(String desktopIp) {
-        analysisExecutor.execute(() -> {
-            // Try to reconnect WireGuard if needed
-            if (wireGuardManager.isConnected()) {
-                runOnUiThread(() -> {
-                    statusText.setText("Reconnecting to " + desktopIp + "...");
-                    launchMainActivity(desktopIp);
-                });
-            } else {
-                // Try direct connection
-                runOnUiThread(() -> {
-                    statusText.setText("Connecting to " + desktopIp + "...");
-                    launchMainActivity(desktopIp);
-                });
-            }
-        });
-    }
-
-    private void launchMainActivity(String desktopIp) {
-        Intent mainIntent = new Intent(this, MainActivity.class);
-        mainIntent.putExtra("desktop_ip", desktopIp);
-        startActivity(mainIntent);
-        finish();
     }
 
     private boolean sendPairingRequest(String desktopIp, int port, String pairKey, String phoneIp) {
@@ -331,7 +306,6 @@ public class PairingActivity extends Activity implements ImageAnalysis.Analyzer,
                 for (InetAddress addr : Collections.list(iface.getInetAddresses())) {
                     if (addr instanceof Inet4Address && !addr.isLoopbackAddress()) {
                         String ip = addr.getHostAddress();
-                        // Filter out link-local
                         if (ip != null && !ip.startsWith("169.254")) {
                             return ip;
                         }

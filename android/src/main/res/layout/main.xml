@@ -1,190 +1,214 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="horizontal"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/barf_bg"
+    android:background="#080808"
     android:fitsSystemWindows="true">
 
-    <!-- ── Header bar ─────────────────────────────────────── -->
-    <LinearLayout
-        android:orientation="horizontal"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:paddingStart="20dp"
-        android:paddingEnd="20dp"
-        android:gravity="center_vertical">
+    <!-- Camera feed -->
+    <SurfaceView
+        android:id="@+id/cameraview"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1" />
 
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="BARF"
-            android:textColor="@color/barf_text_primary"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:letterSpacing="0.1"/>
-
-        <!-- Status dots: API · Serial · WASM -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="API"
-            android:textColor="@color/barf_text_muted"
-            android:textSize="10sp"
-            android:letterSpacing="0.04"
-            android:layout_marginEnd="4dp"/>
-        <View
-            android:id="@+id/dotApi"
-            android:layout_width="7dp"
-            android:layout_height="7dp"
-            android:background="@drawable/dot_green"
-            android:layout_marginEnd="12dp"/>
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="SERIAL"
-            android:textColor="@color/barf_text_muted"
-            android:textSize="10sp"
-            android:letterSpacing="0.04"
-            android:layout_marginEnd="4dp"/>
-        <View
-            android:id="@+id/dotSerial"
-            android:layout_width="7dp"
-            android:layout_height="7dp"
-            android:background="@drawable/dot_red"
-            android:layout_marginEnd="12dp"/>
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="WASM"
-            android:textColor="@color/barf_text_muted"
-            android:textSize="10sp"
-            android:letterSpacing="0.04"
-            android:layout_marginEnd="4dp"/>
-        <View
-            android:id="@+id/dotWasm"
-            android:layout_width="7dp"
-            android:layout_height="7dp"
-            android:background="@drawable/dot_red"/>
-
-    </LinearLayout>
-
-    <!-- ── Camera preview (fills remaining space minus controls) ── -->
-    <FrameLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:background="#000000">
-
-        <SurfaceView
-            android:id="@+id/cameraview"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:layout_gravity="center"/>
-
-    </FrameLayout>
-
-    <!-- ── Controls card ──────────────────────────────────── -->
+    <!-- Debug panel -->
     <LinearLayout
         android:orientation="vertical"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@drawable/bg_card"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
-        android:paddingTop="16dp"
-        android:paddingBottom="16dp"
-        android:layout_marginStart="12dp"
-        android:layout_marginEnd="12dp"
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="12dp">
+        android:layout_width="300dp"
+        android:layout_height="match_parent"
+        android:background="#0e0e0e"
+        android:padding="6dp">
 
-        <!-- ── Action buttons row ─── -->
+        <!-- ESP32 status banner -->
+        <TextView
+            android:id="@+id/tvEspStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="⬤  ESP32  DISCONNECTED"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="#FF4444"
+            android:fontFamily="monospace"
+            android:gravity="center"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp"
+            android:background="#1a0000"
+            android:layout_marginBottom="4dp" />
+
+        <!-- Device chip info -->
+        <TextView
+            android:id="@+id/tvDeviceInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="no device detected"
+            android:textSize="10sp"
+            android:textColor="#555555"
+            android:fontFamily="monospace"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp"
+            android:layout_marginBottom="4dp" />
+
+        <!-- Action buttons row 1 -->
         <LinearLayout
             android:orientation="horizontal"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="14dp">
+            android:layout_marginBottom="3dp">
 
             <Button
-                android:id="@+id/buttonSwitchCamera"
-                style="@style/BARFButton"
-                android:text="Switch Camera"
-                android:layout_marginEnd="8dp"/>
+                android:id="@+id/btnMotorTest"
+                android:layout_width="0dp"
+                android:layout_height="32dp"
+                android:layout_weight="1"
+                android:text="▶ MOTOR TEST"
+                android:textSize="9sp"
+                android:textColor="#33FF33"
+                android:backgroundTint="#0d2b0d"
+                android:padding="0dp"
+                android:layout_marginEnd="3dp" />
+
+            <Button
+                android:id="@+id/btnStop"
+                android:layout_width="0dp"
+                android:layout_height="32dp"
+                android:layout_weight="1"
+                android:text="■ STOP"
+                android:textSize="9sp"
+                android:textColor="#FF4444"
+                android:backgroundTint="#2b0d0d"
+                android:padding="0dp" />
+        </LinearLayout>
+
+        <!-- Action buttons row 2 -->
+        <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="3dp">
+
+            <Button
+                android:id="@+id/btnReconnect"
+                android:layout_width="0dp"
+                android:layout_height="32dp"
+                android:layout_weight="1"
+                android:text="↻ USB"
+                android:textSize="9sp"
+                android:textColor="#4499FF"
+                android:backgroundTint="#0d1a2b"
+                android:padding="0dp"
+                android:layout_marginEnd="3dp" />
 
             <Button
                 android:id="@+id/buttonPair"
-                style="@style/BARFButton"
-                android:text="Pair Desktop"
-                android:layout_marginStart="0dp"/>
+                android:layout_width="0dp"
+                android:layout_height="32dp"
+                android:layout_weight="1"
+                android:text="⇆ PAIR"
+                android:textSize="9sp"
+                android:textColor="#AAAAAA"
+                android:backgroundTint="#1e1e1e"
+                android:padding="0dp"
+                android:layout_marginEnd="3dp" />
 
+            <Button
+                android:id="@+id/buttonSwitchCamera"
+                android:layout_width="0dp"
+                android:layout_height="32dp"
+                android:layout_weight="1"
+                android:text="⌖ CAM"
+                android:textSize="9sp"
+                android:textColor="#AAAAAA"
+                android:backgroundTint="#1e1e1e"
+                android:padding="0dp" />
         </LinearLayout>
 
-        <!-- ── Divider ─── -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="@color/barf_border"
-            android:layout_marginBottom="14dp"/>
-
-        <!-- ── Task row ─── -->
+        <!-- Log header -->
         <LinearLayout
             android:orientation="horizontal"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:layout_marginBottom="10dp">
+            android:layout_marginTop="2dp"
+            android:layout_marginBottom="2dp">
 
             <TextView
-                style="@style/BARFLabel"
-                android:text="TASK"/>
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="LOGCAT"
+                android:textSize="9sp"
+                android:textColor="#444444"
+                android:fontFamily="monospace"
+                android:gravity="start" />
+
+            <Button
+                android:id="@+id/btnClearLog"
+                android:layout_width="wrap_content"
+                android:layout_height="20dp"
+                android:text="CLEAR"
+                android:textSize="8sp"
+                android:textColor="#444444"
+                android:backgroundTint="#1a1a1a"
+                android:padding="0dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp" />
+        </LinearLayout>
+
+        <!-- Log scrollview -->
+        <ScrollView
+            android:id="@+id/scrollLog"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:background="#050505"
+            android:fillViewport="true"
+            android:overScrollMode="never">
+
+            <TextView
+                android:id="@+id/tvLog"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="8.5sp"
+                android:textColor="#22CC22"
+                android:fontFamily="monospace"
+                android:padding="4dp"
+                android:lineSpacingExtra="1dp"
+                android:text="" />
+        </ScrollView>
+
+        <!-- Model/Task spinners compact row -->
+        <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp">
 
             <Spinner
                 android:id="@+id/spinnerTask"
-                style="@style/BARFSpinner"
-                android:entries="@array/task_array"/>
-
-        </LinearLayout>
-
-        <!-- ── Model row ─── -->
-        <LinearLayout
-            android:orientation="horizontal"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:layout_marginBottom="10dp">
-
-            <TextView
-                style="@style/BARFLabel"
-                android:text="MODEL"/>
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:drawSelectorOnTop="true"
+                android:entries="@array/task_array" />
 
             <Spinner
                 android:id="@+id/spinnerModel"
-                style="@style/BARFSpinner"
-                android:entries="@array/model_array"/>
-
-        </LinearLayout>
-
-        <!-- ── Engine row ─── -->
-        <LinearLayout
-            android:orientation="horizontal"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical">
-
-            <TextView
-                style="@style/BARFLabel"
-                android:text="ENGINE"/>
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:drawSelectorOnTop="true"
+                android:entries="@array/model_array" />
 
             <Spinner
                 android:id="@+id/spinnerCPUGPU"
-                style="@style/BARFSpinner"
-                android:entries="@array/cpugpu_array"/>
-
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:drawSelectorOnTop="true"
+                android:entries="@array/cpugpu_array" />
         </LinearLayout>
 
     </LinearLayout>

@@ -27,6 +27,14 @@ android {
         coreLibraryDesugaringEnabled true
     }
 
+    testOptions {
+        unitTests {
+            // Allow Android framework stubs to return defaults (null/0/false)
+            // instead of throwing in plain JUnit tests.
+            returnDefaultValues = true
+        }
+    }
+
     externalNativeBuild {
         cmake {
             path file('src/main/jni/CMakeLists.txt')
@@ -81,6 +89,14 @@ dependencies {
     
     // WireGuard Android library for secure pairing
     implementation 'com.wireguard.android:tunnel:1.0.20251231'
+
+    // USB-serial drivers for CP2102, CH340, FTDI, CDC ACM (ESP32 all variants)
+    implementation 'com.github.mik3y:usb-serial-for-android:3.8.0'
+
+    // Unit testing
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.mockito:mockito-core:5.11.0'
+    testImplementation 'org.mockito:mockito-inline:5.2.0'
 }
 
 // Force CameraX resolution to ensure 16KB alignment

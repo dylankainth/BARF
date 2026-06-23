@@ -19,9 +19,20 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class SimpleWebSocketServer extends WebSocketServer {
     private static final String TAG = "SimpleWebSocketServer";
-    
+
+    public interface ConnectionListener {
+        void onDesktopConnected();
+        void onDesktopDisconnected();
+    }
+
     // Thread-safe set of connected clients
     private final Set<WebSocket> clients = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
+    private ConnectionListener connectionListener;
+
+    public void setConnectionListener(ConnectionListener listener) {
+        this.connectionListener = listener;
+    }
     
     public SimpleWebSocketServer(int port) {
         super(new InetSocketAddress(port));
@@ -29,55 +40,62 @@ public class SimpleWebSocketServer extends WebSocketServer {
         Log.i(TAG, "Simple WebSocket server created on port " + port);
     }
     
+    /** Called with the raw WebSocket connection whenever a new client joins. */
+    public interface NewClientListener {
+        void onNewClient(WebSocket conn);
+    }
+
+    private NewClientListener newClientListener;
+
+    public void setNewClientListener(NewClientListener listener) {
+        this.newClientListener = listener;
+    }
+
     @Override
     public void onOpen(WebSocket conn, ClientHandshake handshake) {
         clients.add(conn);
         String clientId = conn.getRemoteSocketAddress().toString();
         Log.i(TAG, "Client connected: " + clientId + " (total: " + clients.size() + ")");
-        
-        // Send welcome message
-        try {
-            JsonObject welcome = new JsonObject();
-            welcome.addProperty("type", "welcome");
-            welcome.addProperty("message", "Connected to Android WebSocket server");
-            welcome.addProperty("clientId", clientId);
-            welcome.addProperty("timestamp", System.currentTimeMillis());
-            
-            conn.send(welcome.toString());
-            Log.d(TAG, "Welcome message sent to: " + clientId);
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to send welcome message: " + e.getMessage());
+
+        if (connectionListener != null) {
+            connectionListener.onDesktopConnected();
+        }
+
+        // Let PhoneApiServer push current state (serial status, etc.) to the new client
+        if (newClientListener != null) {
+            newClientListener.onNewClient(conn);
         }
     }
     
     @Override
     public void onClose(WebSocket conn, int code, String reason, boolean remote) {
-        clients.remove(conn);
+        boolean wasPresent = clients.remove(conn);
         String clientId = conn.getRemoteSocketAddress().toString();
         Log.i(TAG, "Client disconnected: " + clientId + " (code: " + code + ", reason: " + reason + ", total: " + clients.size() + ")");
+
+        // Only fire if we actually removed this client (prevents double-fire when onError
+        // already removed it before onClose is called for the same connection).
+        if (wasPresent && clients.isEmpty() && connectionListener != null) {
+            connectionListener.onDesktopDisconnected();
+        }
     }
     
+    /** Listener for incoming messages that need to be handled by the app (e.g. serial write). */
+    public interface MessageListener {
+        void onMessage(String message);
+    }
+
+    private MessageListener messageListener;
+
+    public void setMessageListener(MessageListener listener) {
+        this.messageListener = listener;
+    }
+
     @Override
     public void onMessage(WebSocket conn, String message) {
-        String clientId = conn.getRemoteSocketAddress().toString();
-        Log.d(TAG, "Received from " + clientId + ": " + message);
-        
-        // Echo message back to sender
-        try {
-            JsonObject response = new JsonObject();
-            response.addProperty("type", "echo");
-            response.addProperty("originalMessage", message);
-            response.addProperty("timestamp", System.currentTimeMillis());
-            response.addProperty("from", "server");
-            
-            conn.send(response.toString());
-            Log.d(TAG, "Echo sent to: " + clientId);
-            
-            // Also broadcast to all other clients
-            broadcastToOthers(conn, message, clientId);
-            
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to process message: " + e.getMessage());
+        Log.d(TAG, "Received from " + conn.getRemoteSocketAddress() + ": " + message);
+        if (messageListener != null) {
+            messageListener.onMessage(message);
         }
     }
     
@@ -86,6 +104,8 @@ public class SimpleWebSocketServer extends WebSocketServer {
         String clientId = conn != null ? conn.getRemoteSocketAddress().toString() : "unknown";
         Log.e(TAG, "WebSocket error for " + clientId + ": " + ex.getMessage(), ex);
         if (conn != null) {
+            // onClose will follow this for the same connection, so don't fire the listener
+            // here — let onClose handle it via the wasPresent guard to avoid double-fire.
             clients.remove(conn);
         }
     }
@@ -96,45 +116,14 @@ public class SimpleWebSocketServer extends WebSocketServer {
     }
     
     /**
-     * Broadcast a message to all clients except the sender.
-     */
-    private void broadcastToOthers(WebSocket sender, String originalMessage, String senderId) {
-        JsonObject broadcast = new JsonObject();
-        broadcast.addProperty("type", "broadcast");
-        broadcast.addProperty("message", originalMessage);
-        broadcast.addProperty("from", senderId);
-        broadcast.addProperty("timestamp", System.currentTimeMillis());
-        
-        String broadcastJson = broadcast.toString();
-        
-        for (WebSocket client : clients) {
-            if (client != sender && client.isOpen()) {
-                try {
-                    client.send(broadcastJson);
-                } catch (Exception e) {
-                    Log.e(TAG, "Failed to broadcast to client: " + e.getMessage());
-                    clients.remove(client);
-                }
-            }
-        }
-    }
-    
-    /**
-     * Broadcast a message to all connected clients.
+     * Broadcast a message to all connected clients as-is (no extra wrapping).
      */
     public void broadcast(String message) {
-        JsonObject broadcast = new JsonObject();
-        broadcast.addProperty("type", "server_broadcast");
-        broadcast.addProperty("message", message);
-        broadcast.addProperty("timestamp", System.currentTimeMillis());
-        
-        String json = broadcast.toString();
         Log.d(TAG, "Broadcasting to " + clients.size() + " clients: " + message);
-        
         for (WebSocket client : clients) {
             try {
                 if (client.isOpen()) {
-                    client.send(json);
+                    client.send(message);
                 } else {
                     clients.remove(client);
                 }

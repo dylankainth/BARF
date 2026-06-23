@@ -7,11 +7,8 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
-    <!-- Required for foreground service (Android 9+) -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <!-- Required for foreground service type connectedDevice (Android 14+) -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
-    <!-- Required to show foreground service notification (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-feature android:name="android.hardware.usb.host" android:required="true" />
     <uses-feature android:name="android.hardware.camera2.full" />
@@ -21,23 +18,21 @@
         android:icon="@mipmap/ic_launcher"
         android:theme="@style/Theme.BARF"
         android:networkSecurityConfig="@xml/network_security_config">
+        <!--
+            MainActivity is the launcher. It owns the camera/YOLO pipeline and starts
+            PairingActivity via startActivityForResult when the user taps "Pair".
+            singleTop prevents duplicate instances and allows USB attach to be delivered.
+        -->
         <activity
-            android:name=".pairing.PairingActivity"
+            android:name="MainActivity"
             android:label="@string/app_name"
             android:exported="true"
             android:screenOrientation="portrait"
-            android:launchMode="singleTask">
+            android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
-        <activity
-            android:name="MainActivity"
-            android:label="@string/app_name"
-            android:exported="false"
-            android:screenOrientation="portrait"
-            android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
             </intent-filter>
@@ -45,5 +40,13 @@
                 android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
                 android:resource="@xml/device_filter" />
         </activity>
+
+        <activity
+            android:name=".pairing.PairingActivity"
+            android:label="@string/app_name"
+            android:exported="false"
+            android:screenOrientation="landscape"
+            android:launchMode="singleTop">
+        </activity>
     </application>
-</manifest> 
+</manifest>

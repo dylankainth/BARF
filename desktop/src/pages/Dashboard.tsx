@@ -10,6 +10,7 @@ export default function Dashboard() {
 
   const handlePair = useCallback((ip: string) => {
     setPhoneIp(ip);
+    if (!ip) setPhoneStatus("Disconnected");
   }, []);
 
   useEffect(() => {
@@ -28,9 +29,11 @@ export default function Dashboard() {
         const json = await res.json();
         setStatus((prev: any) => ({ ...prev, ...json }));
       } else {
+        console.warn(`[BARF] /api/status returned ${res.status} from ${phoneIp}`);
         setPhoneStatus("Disconnected");
       }
-    } catch {
+    } catch (e) {
+      console.warn(`[BARF] Cannot reach phone at http://${phoneIp}:8080/api/status —`, e);
       setPhoneStatus("Disconnected");
     }
   }
@@ -62,9 +65,17 @@ export default function Dashboard() {
         {/* Camera Feed */}
         <article className="break-inside-avoid rounded-xl border border-[#22242b] bg-[linear-gradient(160deg,#131419_0%,#0f1014_100%)] p-4 text-zinc-100 shadow-[0_16px_40px_rgba(0,0,0,0.28)]">
           <div className="mb-3 text-sm font-semibold tracking-wide">Camera Feed</div>
-          <div className="aspect-video bg-zinc-900 rounded flex items-center justify-center text-zinc-600 text-sm">
-            Camera — connect to phone to view stream
-          </div>
+          {phoneStatus === "Connected" && phoneIp ? (
+            <img
+              src={`http://${phoneIp}:8080/api/video`}
+              alt="camera feed"
+              className="w-full rounded aspect-video object-cover"
+            />
+          ) : (
+            <div className="aspect-video bg-zinc-900 rounded flex items-center justify-center text-zinc-600 text-sm">
+              Camera — connect to phone to view stream
+            </div>
+          )}
         </article>
 
         {/* Gamepad Controls */}

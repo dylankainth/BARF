@@ -14,15 +14,15 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 public class VideoStreamServer {
     private static final String TAG = "VideoStreamServer";
-    private static final int JPEG_QUALITY = 80;
-    
+    private static final int JPEG_QUALITY = 65;
+
     private LinkedBlockingQueue<byte[]> frameQueue;
     private volatile boolean isStreaming = false;
-    private long lastFrameTime = 0;
+    private final java.util.concurrent.atomic.AtomicLong lastFrameTimestamp = new java.util.concurrent.atomic.AtomicLong(0);
     private static final long MIN_FRAME_INTERVAL = 33; // ~30 FPS
-    
+
     public VideoStreamServer() {
-        this.frameQueue = new LinkedBlockingQueue<>(3); // Keep up to 3 frames buffered
+        this.frameQueue = new LinkedBlockingQueue<>(2); // Keep up to 2 frames buffered
     }
     
     /**
@@ -46,15 +46,16 @@ public class VideoStreamServer {
     /**
      * Submit a frame for streaming. Non-blocking - drops if queue is full.
      */
-    public synchronized void submitFrame(Bitmap frame) {
+    public void submitFrame(Bitmap frame) {
         if (!isStreaming || frame == null) return;
-        
+
         // Rate limit to ~30 FPS
         long now = System.currentTimeMillis();
-        if (now - lastFrameTime < MIN_FRAME_INTERVAL) {
+        long last = lastFrameTimestamp.get();
+        if (now - last < MIN_FRAME_INTERVAL) {
             return;
         }
-        lastFrameTime = now;
+        lastFrameTimestamp.set(now);
         
         try {
             // Encode to JPEG

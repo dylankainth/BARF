@@ -2,6 +2,9 @@ package com.barf.robot;
 
 import android.util.Log;
 
+import com.barf.serial.UsbSerialManager;
+import com.barf.serial.SerialProtocol;
+
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -23,6 +26,7 @@ public class RobotController {
 
     private DatagramSocket udpSocket;
     private String robotIp = "192.168.1.100";
+    private UsbSerialManager usbSerial;
 
     public RobotController() {
         initializeUdpSocket();
@@ -38,6 +42,10 @@ public class RobotController {
         } catch (Exception e) {
             Log.e(TAG, "Failed to initialize UDP socket: " + e.getMessage());
         }
+    }
+
+    public void setUsbSerial(UsbSerialManager usbSerial) {
+        this.usbSerial = usbSerial;
     }
 
     public void setRobotIp(String ip) {
@@ -121,29 +129,45 @@ public class RobotController {
         return status;
     }
 
-    private void sendCommand(int x, int y, int r, int e) {
-        if (udpSocket == null || udpSocket.isClosed()) {
-            Log.w(TAG, "UDP socket not initialized");
-            return;
-        }
+    int[] computeMotorSpeeds(int x, int y, int r) {
+        int fl = Math.max(-255, Math.min(255, y + x + r));
+        int fr = Math.max(-255, Math.min(255, y - x - r));
+        int bl = Math.max(-255, Math.min(255, y - x + r));
+        int br = Math.max(-255, Math.min(255, y + x - r));
+        return new int[]{fl, fr, bl, br};
+    }
 
+    private void sendCommand(int x, int y, int r, int e) {
         robotX = x;
         robotY = y;
         robotR = r;
         robotE = e;
 
-        new Thread(() -> {
-            try {
-                String command = x + "," + y + "," + r + "," + e;
-                byte[] commandBytes = command.getBytes();
-                InetAddress address = InetAddress.getByName(robotIp);
-                DatagramPacket packet = new DatagramPacket(commandBytes, commandBytes.length, address, ROBOT_UDP_PORT);
-                udpSocket.send(packet);
-                Log.d(TAG, "Sent UDP to " + robotIp + ":" + ROBOT_UDP_PORT + " -> " + command);
-            } catch (Exception ex) {
-                Log.e(TAG, "Failed to send UDP command: " + ex.getMessage());
+        if (usbSerial != null && usbSerial.isConnected()) {
+            // Primary path: USB-serial to ESP32
+            int[] speeds = computeMotorSpeeds(x, y, r);
+            String msg = SerialProtocol.motorCommand(speeds);
+            new Thread(() -> usbSerial.write(msg)).start();
+            Log.d(TAG, "Sent serial: " + msg.trim());
+        } else {
+            // Fallback: UDP (dev mode without USB cable)
+            if (udpSocket == null || udpSocket.isClosed()) {
+                Log.w(TAG, "UDP socket not initialized");
+                return;
             }
-        }).start();
+            new Thread(() -> {
+                try {
+                    String command = x + "," + y + "," + r + "," + e;
+                    byte[] commandBytes = command.getBytes();
+                    InetAddress address = InetAddress.getByName(robotIp);
+                    DatagramPacket packet = new DatagramPacket(commandBytes, commandBytes.length, address, ROBOT_UDP_PORT);
+                    udpSocket.send(packet);
+                    Log.d(TAG, "Sent UDP to " + robotIp + ":" + ROBOT_UDP_PORT + " -> " + command);
+                } catch (Exception ex) {
+                    Log.e(TAG, "Failed to send UDP command: " + ex.getMessage());
+                }
+            }).start();
+        }
     }
 
     public void shutdown() {

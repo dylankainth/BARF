@@ -12,6 +12,7 @@ export default function QrPairingCard({ phoneIp, phoneStatus, onPair }: QrPairin
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const [desktopIp, setDesktopIp] = useState<string>("");
   const [pairError, setPairError] = useState<string>("");
+  const [manualIp, setManualIp] = useState<string>("");
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // On mount: get desktop IP + pair key from Rust backend, generate QR
@@ -40,7 +41,7 @@ export default function QrPairingCard({ phoneIp, phoneStatus, onPair }: QrPairin
       });
   }, []);
 
-  // Poll for phone IP (pairing completed)
+  // Poll for phone IP from QR pairing handshake
   useEffect(() => {
     pollingRef.current = setInterval(async () => {
       try {
@@ -57,16 +58,59 @@ export default function QrPairingCard({ phoneIp, phoneStatus, onPair }: QrPairin
     };
   }, [onPair]);
 
-  const isConnected = phoneStatus === "Connected";
+  const isPaired = Boolean(phoneIp);
+  const isApiConnected = phoneStatus === "Connected";
+
+  const handleManualConnect = () => {
+    const ip = manualIp.trim();
+    if (ip) onPair(ip);
+  };
+
+  const handleReset = () => {
+    onPair("");
+    setManualIp("");
+  };
 
   return (
     <article className="mb-4 break-inside-avoid rounded-xl border border-[#22242b] bg-[linear-gradient(160deg,#131419_0%,#0f1014_100%)] p-4 text-zinc-100 shadow-[0_16px_40px_rgba(0,0,0,0.28)]">
       <div className="mb-3 text-sm font-semibold tracking-wide">Phone Connection</div>
 
-      {isConnected ? (
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-green-400" />
-          <span className="text-green-400 text-sm font-semibold">Connected to {phoneIp}</span>
+      {isPaired ? (
+        <div className="space-y-3">
+          {/* Pairing confirmed row */}
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />
+            <span className="text-green-400 text-sm font-semibold">Paired — {phoneIp}</span>
+          </div>
+
+          {/* API reachability row */}
+          <div className="flex items-center gap-2">
+            <span
+              className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                isApiConnected ? "bg-green-400" : "bg-yellow-400 animate-pulse"
+              }`}
+            />
+            <span className={`text-sm ${isApiConnected ? "text-green-400" : "text-yellow-400"}`}>
+              {isApiConnected
+                ? "API connected"
+                : `Connecting to http://${phoneIp}:8080 …`}
+            </span>
+          </div>
+
+          {/* Hint + exit button when stuck connecting */}
+          {!isApiConnected && (
+            <div className="space-y-2">
+              <p className="text-xs text-zinc-500">
+                Make sure the BARF app is open on the phone and both devices are on the same network (or Tailscale).
+              </p>
+              <button
+                onClick={handleReset}
+                className="w-full px-3 py-1.5 rounded-lg border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-sm text-zinc-300 transition"
+              >
+                ← Try a different IP / re-scan QR
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="flex flex-col items-center gap-3">
@@ -84,38 +128,35 @@ export default function QrPairingCard({ phoneIp, phoneStatus, onPair }: QrPairin
                 <br />
                 "Pair with Desktop" option
               </p>
-              <p className="text-xs text-zinc-500">
-                Desktop IP: {desktopIp}
-              </p>
+              <p className="text-xs text-zinc-500">Desktop IP: {desktopIp}</p>
             </>
           ) : (
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-48 h-48 border-2 border-dashed border-zinc-700 rounded flex items-center justify-center">
-                <span className="text-zinc-600 text-sm">Generating QR...</span>
-              </div>
+            <div className="w-48 h-48 border-2 border-dashed border-zinc-700 rounded flex items-center justify-center">
+              <span className="text-zinc-600 text-sm">Generating QR...</span>
             </div>
           )}
 
-          {/* Manual IP fallback */}
+          {/* Manual IP entry */}
           <div className="w-full border-t border-zinc-800 pt-3 mt-1">
             <p className="text-xs text-zinc-500 mb-2 text-center">
               Or enter phone IP manually:
             </p>
-            <div className="flex gap-2 items-center">
+            <div className="flex gap-2">
               <input
                 type="text"
-                defaultValue={phoneIp}
-                onChange={(e) => {
-                  if (e.target.value) onPair(e.target.value);
-                }}
-                className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-sm flex-1"
-                placeholder="Phone IP"
+                value={manualIp}
+                onChange={(e) => setManualIp(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleManualConnect()}
+                className="flex-1 bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-sm font-mono"
+                placeholder="192.168.x.x or 100.x.x.x"
               />
-              <span
-                className={`text-xs font-semibold ${phoneStatus === "Connected" ? "text-green-400" : "text-red-400"}`}
+              <button
+                onClick={handleManualConnect}
+                disabled={!manualIp.trim()}
+                className="px-3 py-1 bg-zinc-700 hover:bg-zinc-600 border border-zinc-600 rounded text-sm font-semibold disabled:opacity-40 transition"
               >
-                {phoneStatus}
-              </span>
+                Connect
+              </button>
             </div>
           </div>
         </div>
