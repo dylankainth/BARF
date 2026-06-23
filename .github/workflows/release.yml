@@ -121,7 +121,14 @@ jobs:
         with:
           pattern: "*"
           merge-multiple: true
+      - name: List files for release
+        run: ls -R
       - uses: softprops/action-gh-release@v2
         with:
-          files: "*"
+          files: |
+            *.apk
+            *.exe
+            *.msi
+            *.dmg
+            *.zip
           generate_release_notes: true
