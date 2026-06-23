@@ -1,0 +1,4 @@
+
+# Local Rust config (machine-specific)
+rust-toolchain.toml
+.cargo/config.toml

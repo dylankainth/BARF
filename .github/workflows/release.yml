@@ -62,9 +62,9 @@ jobs:
 
       - name: vulkan-turnip-driver
         run: |
-          wget -q https://github.com/nihui/mesa-turnip-android-driver/releases/download/${MESA_TURNIP_VERSION}/mesa-turnip-android-${MESA_TURNIP_VERSION}.zip
+          curl -fL -o mesa.zip https://github.com/nihui/mesa-turnip-android-driver/releases/download/${MESA_TURNIP_VERSION}/mesa-turnip-android-${MESA_TURNIP_VERSION}.zip
           mkdir -p android/src/main/jniLibs/arm64-v8a
-          unzip -q mesa-turnip-android-${MESA_TURNIP_VERSION}.zip -d android/src/main/jniLibs/arm64-v8a
+          unzip -q mesa.zip -d android/src/main/jniLibs/arm64-v8a/
 
       - name: modify-jni-cmakelists
         run: |
