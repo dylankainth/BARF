@@ -4,10 +4,10 @@ on:
     tags: "v*.*.*"
 
 env:
-  NCNN_VERSION: 20260113
+  NCNN_VERSION: 20260526
   OPENCV_VERSION: 4.13.0
   OPENCV_MOBILE_TAG: v35
-  MESA_TURNIP_VERSION: 25.3.3
+  MESA_TURNIP_VERSION: 26.1.2
   BUILD_TOOLS_VERSION: 36.0.0
 
 jobs:
@@ -22,6 +22,8 @@ jobs:
         with:
           node-version: 22
       - uses: dtolnay/rust-toolchain@stable
+      - name: Verify Rust
+        run: cargo --version && rustc --version
       - run: npm ci
         working-directory: desktop
       - name: Build desktop app
