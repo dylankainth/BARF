@@ -75,7 +75,9 @@ jobs:
           sed -i "s@opencv-mobile-[^-]*-android@opencv-mobile-${OPENCV_VERSION}-android@g" android/src/main/jni/CMakeLists.txt
 
       - name: build-apk
-        run: ./gradlew :android:assembleRelease --stacktrace
+        run: |
+          chmod +x gradlew
+          ./gradlew :android:assembleRelease --stacktrace
 
       - name: sign-apk
         id: signapk
