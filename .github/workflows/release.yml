@@ -77,7 +77,14 @@ jobs:
       - name: build-apk
         run: |
           chmod +x gradlew
-          ./gradlew :android:assembleRelease --stacktrace
+          ./gradlew :android:assembleRelease --stacktrace 2>&1 | tee gradle.log; exit ${PIPESTATUS[0]}
+
+      - name: Upload gradle logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-gradle-log
+          path: gradle.log
 
       - name: sign-apk
         id: signapk
