@@ -174,7 +174,7 @@ void MyNdkCamera::on_image_render(cv::Mat& rgb) const
     if (g_ctx.apriltag && g_ctx.apriltag_enabled.load())
     {
         cv::Mat gray;
-        cv::cvtColor(rgb, gray, CV_BGR2GRAY);
+        cv::cvtColor(rgb, gray, cv::COLOR_BGR2GRAY);
         g_ctx.apriltag->detect(gray, atags);
         g_ctx.apriltag->draw(rgb, atags);
     }
