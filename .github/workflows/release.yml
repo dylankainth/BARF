@@ -50,24 +50,21 @@ jobs:
 
       - name: ncnn
         run: |
+          wget -q https://github.com/Tencent/ncnn/releases/download/${NCNN_VERSION}/ncnn-${NCNN_VERSION}-android-vulkan.zip
           mkdir -p android/src/main/jni
-          curl -sL -o ncnn.zip https://github.com/Tencent/ncnn/releases/download/${NCNN_VERSION}/ncnn-${NCNN_VERSION}-android-vulkan.zip
-          unzip -q ncnn.zip -d android/src/main/jni
-          rm ncnn.zip
+          unzip -q ncnn-${NCNN_VERSION}-android-vulkan.zip -d android/src/main/jni
 
       - name: opencv-mobile
         run: |
+          wget -q https://github.com/nihui/opencv-mobile/releases/download/${OPENCV_MOBILE_TAG}/opencv-mobile-${OPENCV_VERSION}-android.zip
           mkdir -p android/src/main/jni
-          curl -sL -o opencv.zip https://github.com/nihui/opencv-mobile/releases/download/${OPENCV_MOBILE_TAG}/opencv-mobile-${OPENCV_VERSION}-android.zip
-          unzip -q opencv.zip -d android/src/main/jni
-          rm opencv.zip
+          unzip -q opencv-mobile-${OPENCV_VERSION}-android.zip -d android/src/main/jni
 
       - name: vulkan-turnip-driver
         run: |
-          curl -sL -o mesa.zip https://github.com/nihui/mesa-turnip-android-driver/releases/download/${MESA_TURNIP_VERSION}/mesa-turnip-android-${MESA_TURNIP_VERSION}.zip
+          wget -q https://github.com/nihui/mesa-turnip-android-driver/releases/download/${MESA_TURNIP_VERSION}/mesa-turnip-android-${MESA_TURNIP_VERSION}.zip
           mkdir -p android/src/main/jniLibs/arm64-v8a
-          unzip -q mesa.zip -d android/src/main/jniLibs/arm64-v8a
-          rm mesa.zip
+          unzip -q mesa-turnip-android-${MESA_TURNIP_VERSION}.zip -d android/src/main/jniLibs/arm64-v8a
 
       - name: modify-jni-cmakelists
         run: |

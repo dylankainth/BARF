@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef } from "react";
-import { invoke } from "@tauri-apps/api/core";
 
 interface SerialMessage {
   type: "serial_rx" | "serial_tx" | "serial_status";
