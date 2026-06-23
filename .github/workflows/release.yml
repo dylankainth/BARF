@@ -64,12 +64,12 @@ jobs:
         run: |
           set -e
           mkdir -p android/src/main/jniLibs/arm64-v8a
-          MESA_URL="https://github.com/nihui/mesa-turnip-android-driver/releases/download/${MESA_TURNIP_VERSION}/mesa-turnip-android-${MESA_TURNIP_VERSION}.zip"
-          echo "Downloading: $MESA_URL"
-          curl -vL --retry 3 -o mesa.zip "$MESA_URL"
-          ls -lh mesa.zip || echo "FILE NOT FOUND"
-          unzip -q mesa.zip -d android/src/main/jniLibs/arm64-v8a/
-          rm mesa.zip
+          gh release download ${MESA_TURNIP_VERSION} \
+            --repo nihui/mesa-turnip-android-driver \
+            --pattern "mesa-turnip-android-${MESA_TURNIP_VERSION}.zip" \
+            --dir /tmp/mesa
+          unzip -q /tmp/mesa/mesa-turnip-android-${MESA_TURNIP_VERSION}.zip \
+            -d android/src/main/jniLibs/arm64-v8a/
 
       - name: modify-jni-cmakelists
         run: |
