@@ -1,3 +1,4 @@
+use crate::binaries;
 use std::process::Command;
 
 /// Compile C++ source to WASM using clang.
@@ -46,7 +47,7 @@ pub fn compile_esp32(source: String) -> Result<String, String> {
     let sketch_path = tmp_dir.join("barf_esp32.ino");
     std::fs::write(&sketch_path, &source).map_err(|e| e.to_string())?;
 
-    let output = Command::new("arduino-cli")
+    let output = binaries::command("arduino-cli")
         .args(["compile", "--fqbn", "esp32:esp32:esp32"])
         .arg(&tmp_dir)
         .output()
@@ -71,7 +72,7 @@ pub fn flash_esp32(port: String) -> Result<String, String> {
         return Err("No compiled firmware found — compile first.".to_string());
     }
 
-    let output = Command::new("arduino-cli")
+    let output = binaries::command("arduino-cli")
         .args(["upload", "--fqbn", "esp32:esp32:esp32", "--port"])
         .arg(&port)
         .arg(&tmp_dir)
@@ -89,7 +90,7 @@ pub fn flash_esp32(port: String) -> Result<String, String> {
 /// List connected serial ports via arduino-cli board list.
 #[tauri::command]
 pub fn list_serial_ports() -> Result<Vec<String>, String> {
-    let output = Command::new("arduino-cli")
+    let output = binaries::command("arduino-cli")
         .args(["board", "list", "--format", "json"])
         .output()
         .map_err(|e| format!("arduino-cli not found: {}", e))?;

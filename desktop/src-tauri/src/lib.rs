@@ -1,4 +1,5 @@
 pub mod arduino_manager;
+pub mod binaries;
 pub mod compile;
 pub mod pairing_server;
 pub mod phone_bridge;

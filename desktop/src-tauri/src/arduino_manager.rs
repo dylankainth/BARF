@@ -1,5 +1,5 @@
+use crate::binaries;
 use serde::{Deserialize, Serialize};
-use std::process::Command;
 use std::process::Stdio;
 use tauri::Emitter;
 
@@ -43,7 +43,7 @@ pub struct ProgressEvent {
 
 #[tauri::command]
 pub fn get_additional_urls() -> Result<Vec<String>, String> {
-    let output = Command::new("arduino-cli")
+    let output = binaries::command("arduino-cli")
         .args(["config", "dump", "--format", "json"])
         .output()
         .map_err(|e| format!("Failed to run arduino-cli: {}", e))?;
@@ -73,7 +73,7 @@ pub fn get_additional_urls() -> Result<Vec<String>, String> {
 
 #[tauri::command]
 pub fn add_additional_url(url: String) -> Result<(), String> {
-    let output = Command::new("arduino-cli")
+    let output = binaries::command("arduino-cli")
         .args(["config", "add", "board_manager.additional_urls", &url])
         .output()
         .map_err(|e| format!("Failed to run arduino-cli: {}", e))?;
@@ -88,7 +88,7 @@ pub fn add_additional_url(url: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn remove_additional_url(url: String) -> Result<(), String> {
-    let output = Command::new("arduino-cli")
+    let output = binaries::command("arduino-cli")
         .args(["config", "remove", "board_manager.additional_urls", &url])
         .output()
         .map_err(|e| format!("Failed to run arduino-cli: {}", e))?;
@@ -103,7 +103,7 @@ pub fn remove_additional_url(url: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn list_installed_platforms() -> Result<Vec<InstalledPlatform>, String> {
-    let output = Command::new("arduino-cli")
+    let output = binaries::command("arduino-cli")
         .args(["core", "list", "--format", "json"])
         .output()
         .map_err(|e| format!("Failed to run arduino-cli: {}", e))?;
@@ -142,7 +142,7 @@ pub fn list_installed_platforms() -> Result<Vec<InstalledPlatform>, String> {
 
 #[tauri::command]
 pub fn search_platforms(query: String) -> Result<Vec<AvailablePlatform>, String> {
-    let output = Command::new("arduino-cli")
+    let output = binaries::command("arduino-cli")
         .args(["core", "search", &query, "--format", "json"])
         .output()
         .map_err(|e| format!("Failed to run arduino-cli: {}", e))?;
@@ -180,7 +180,7 @@ pub fn search_platforms(query: String) -> Result<Vec<AvailablePlatform>, String>
 
 #[tauri::command]
 pub fn list_installed_libraries() -> Result<Vec<InstalledLibrary>, String> {
-    let output = Command::new("arduino-cli")
+    let output = binaries::command("arduino-cli")
         .args(["lib", "list", "--format", "json"])
         .output()
         .map_err(|e| format!("Failed to run arduino-cli: {}", e))?;
@@ -222,7 +222,7 @@ pub fn list_installed_libraries() -> Result<Vec<InstalledLibrary>, String> {
 
 #[tauri::command]
 pub fn search_libraries(query: String) -> Result<Vec<AvailableLibrary>, String> {
-    let output = Command::new("arduino-cli")
+    let output = binaries::command("arduino-cli")
         .args(["lib", "search", &query, "--format", "json"])
         .output()
         .map_err(|e| format!("Failed to run arduino-cli: {}", e))?;
@@ -350,42 +350,48 @@ async fn stream_command(
 
 #[tauri::command]
 pub async fn install_platform(platform: String, app: tauri::AppHandle) -> Result<(), String> {
-    let mut cmd = tokio::process::Command::new("arduino-cli");
+    let arduino_cli = binaries::path("arduino-cli").unwrap_or_else(|| "arduino-cli".into());
+    let mut cmd = tokio::process::Command::new(arduino_cli);
     cmd.args(["core", "install", &platform]);
     stream_command(cmd, &app).await
 }
 
 #[tauri::command]
 pub async fn uninstall_platform(platform: String, app: tauri::AppHandle) -> Result<(), String> {
-    let mut cmd = tokio::process::Command::new("arduino-cli");
+    let arduino_cli = binaries::path("arduino-cli").unwrap_or_else(|| "arduino-cli".into());
+    let mut cmd = tokio::process::Command::new(arduino_cli);
     cmd.args(["core", "uninstall", &platform]);
     stream_command(cmd, &app).await
 }
 
 #[tauri::command]
 pub async fn update_core_index(app: tauri::AppHandle) -> Result<(), String> {
-    let mut cmd = tokio::process::Command::new("arduino-cli");
+    let arduino_cli = binaries::path("arduino-cli").unwrap_or_else(|| "arduino-cli".into());
+    let mut cmd = tokio::process::Command::new(arduino_cli);
     cmd.args(["core", "update-index"]);
     stream_command(cmd, &app).await
 }
 
 #[tauri::command]
 pub async fn install_library(name: String, app: tauri::AppHandle) -> Result<(), String> {
-    let mut cmd = tokio::process::Command::new("arduino-cli");
+    let arduino_cli = binaries::path("arduino-cli").unwrap_or_else(|| "arduino-cli".into());
+    let mut cmd = tokio::process::Command::new(arduino_cli);
     cmd.args(["lib", "install", &name]);
     stream_command(cmd, &app).await
 }
 
 #[tauri::command]
 pub async fn uninstall_library(name: String, app: tauri::AppHandle) -> Result<(), String> {
-    let mut cmd = tokio::process::Command::new("arduino-cli");
+    let arduino_cli = binaries::path("arduino-cli").unwrap_or_else(|| "arduino-cli".into());
+    let mut cmd = tokio::process::Command::new(arduino_cli);
     cmd.args(["lib", "uninstall", &name]);
     stream_command(cmd, &app).await
 }
 
 #[tauri::command]
 pub async fn update_library_index(app: tauri::AppHandle) -> Result<(), String> {
-    let mut cmd = tokio::process::Command::new("arduino-cli");
+    let arduino_cli = binaries::path("arduino-cli").unwrap_or_else(|| "arduino-cli".into());
+    let mut cmd = tokio::process::Command::new(arduino_cli);
     cmd.args(["lib", "update-index"]);
     stream_command(cmd, &app).await
 }
