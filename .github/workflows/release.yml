@@ -117,12 +117,14 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
         with:
-          pattern: "*"
-          merge-multiple: true
-      - name: List files for release
-        run: ls -R
+          path: release-artifacts
+      - name: Gather release files
+        run: |
+          find release-artifacts -type f \( -iname "*.apk" -o -iname "*.exe" -o -iname "*.msi" -o -iname "*.dmg" -o -iname "*.deb" -o -iname "*.AppImage" -o -iname "*.rpm" \) -exec cp -v {} . \;
+          ls -la *.apk *.exe *.msi *.dmg 2>/dev/null || echo "No release files found"
       - uses: softprops/action-gh-release@v2
         with:
           files: |
@@ -130,5 +132,4 @@ jobs:
             *.exe
             *.msi
             *.dmg
-            *.zip
           generate_release_notes: true
